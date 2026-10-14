@@ -45,9 +45,9 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Flor Del Ceibo">
     <meta name="theme-color" content="#480812">
-    <link id="apple-icon" rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/2533/2533036.png">
+    <link id="apple-icon" rel="apple-touch-icon" href="icon-180.png">
     <link id="favicon" rel="icon" type="image/svg+xml" href="">
-    <link rel="manifest" href='data:application/json,{"name":"Flor Del Ceibo","short_name":"Flor Del Ceibo","start_url":".","display":"standalone","background_color":"#480812","theme_color":"#931026","icons":[{"src":"https://cdn-icons-png.flaticon.com/512/2533/2533036.png","sizes":"512x512","type":"image/png"}]}'>
+    <link rel="manifest" href="manifest.webmanifest">
 
     <style>
         /* Modo oscuro (fondo negro) elegido por el cliente; las ventanas emergentes quedan claras */
@@ -1282,7 +1282,7 @@
                     const ctx = cv.getContext('2d');
                     ctx.fillStyle = '#fff1f2'; ctx.fillRect(0, 0, 180, 180);
                     ctx.drawImage(img, 0, 0, 180, 180);
-                    document.getElementById('apple-icon').href = cv.toDataURL('image/png');
+                    if (location.protocol === 'file:') document.getElementById('apple-icon').href = cv.toDataURL('image/png');
                 };
                 img.src = svgUrl;
             } catch (e) { /* el ícono es opcional */ }
@@ -3096,6 +3096,11 @@
             if (/iPhone|iPad|iPod/i.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)) return 'ios';
             if (/Android/i.test(ua)) return 'android';
             return 'desktop';
+        }
+
+        // Service worker: necesario para que el celular permita instalar la app (solo funciona publicada en https)
+        if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+            window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js').catch(() => {}); });
         }
 
         async function showInstallTutorial() {
