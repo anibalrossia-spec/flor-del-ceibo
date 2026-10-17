@@ -6,6 +6,20 @@
     <title>VentiunGo - Flor Del Ceibo</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+    <script>
+    // Base de datos compartida de VentiunGo (no es secreta: la seguridad la dan las reglas de Firestore).
+    window.VENTIUN_FIREBASE = {
+      apiKey: "AIzaSyDgPs6NIM_utoOnaitB1gk5nnsnKazmKa0",
+      authDomain: "socio-cafe.firebaseapp.com",
+      projectId: "socio-cafe",
+      storageBucket: "socio-cafe.firebasestorage.app",
+      messagingSenderId: "995147367882",
+      appId: "1:995147367882:web:d7116274e65785a633fb33"
+    };
+    </script>
     <script>
         tailwind.config = {
             theme: {
@@ -1298,6 +1312,7 @@
             updateCartUI();
             updateClientBanner();
             renderHomeCategories();
+            cloudInit();
         });
 
         function loadStateFromStorage() {
@@ -1344,7 +1359,7 @@
             }
         }
 
-        function saveProductsToStorage() { localStorage.setItem('redpro_products', JSON.stringify(products)); }
+        function saveProductsToStorage() { localStorage.setItem('redpro_products', JSON.stringify(products)); cloudSyncProducts(); }
         function saveCartToStorage() { localStorage.setItem('redpro_cart', JSON.stringify(cart)); }
         function saveAccountsToStorage() { localStorage.setItem('redpro_accounts', JSON.stringify(clientAccounts)); }
         function saveOrdersToStorage() { localStorage.setItem('redpro_orders', JSON.stringify(orders)); }
@@ -2078,7 +2093,7 @@
         const ADMIN_PASS = 'admin123';
 
         function isAdminLogin(user, pass) {
-            return (user === ADMIN_USER || user === 'admin@flordelceibo.com') && pass === ADMIN_PASS;
+            return (user === ADMIN_USER || user === 'admin@flordelceibo.com');
         }
 
         function setAuthTab(tab) {
@@ -2137,6 +2152,8 @@
             const password = document.getElementById('login-password').value.trim();
 
             if (isAdminLogin(email, password)) {
+                showToast("Verificando administrador…", "info");
+                cloudAdminLogin(password).then(() => {
                 currentUser = {
                     name: 'Administrador VentiunGo',
                     email: 'admin@flordelceibo.com',
@@ -2148,6 +2165,12 @@
                 document.getElementById('form-client-login').reset();
                 showToast("Acceso concedido como Administrador 🔓", "success");
                 switchTab('admin');
+                }).catch(err => {
+                    const m = err && err.message === 'clave' ? 'Contraseña de administrador incorrecta'
+                        : err && err.message === 'corta' ? 'La contraseña debe tener al menos 6 caracteres'
+                        : 'No se pudo conectar con la base de datos (' + ((err && (err.code || err.message)) || 'error') + ')';
+                    showToast(m, 'warning');
+                });
                 return;
             }
 
@@ -2235,6 +2258,7 @@
         }
 
         function logoutUser() {
+            if (currentUser && currentUser.role === 'admin' && FAUTH) { try { FAUTH.signOut(); } catch (e) {} }
             currentUser = null;
             saveUserSession();
             updateClientBanner();
@@ -3139,6 +3163,89 @@
                     ? 'flex-1 py-2 rounded-lg text-xs font-bold bg-ice-600 text-white shadow'
                     : 'flex-1 py-2 rounded-lg text-xs font-bold bg-slate-100 text-slate-600 hover:bg-slate-200';
             });
+        }
+    </script>
+
+    <script>
+        // ===== Catálogo compartido en la nube (Firestore) =====
+        // Los productos se guardan en tiendas/flor-del-ceibo/productos: todos los clientes ven lo mismo.
+        const FDC_TIENDA = 'flor-del-ceibo';
+        const FDC_ADMIN_EMAIL = 'admin@flordelceibo.com';
+        let FDB = null, FAUTH = null, cloudRemote = {}, cloudTimer = null;
+
+        function cloudClean(o) { return JSON.parse(JSON.stringify(o)); }
+        function cloudStable(o) { const r = {}; Object.keys(o).sort().forEach(k => { r[k] = o[k]; }); return JSON.stringify(r); }
+
+        function cloudInit() {
+            try {
+                if (!window.firebase || !window.VENTIUN_FIREBASE) return;
+                if (!firebase.apps.length) firebase.initializeApp(window.VENTIUN_FIREBASE);
+                FDB = firebase.firestore(); FAUTH = firebase.auth();
+            } catch (e) { console.warn('Nube no disponible', e); FDB = FAUTH = null; return; }
+
+            FDB.collection('tiendas').doc(FDC_TIENDA).collection('productos').onSnapshot(snap => {
+                const map = {}, list = [];
+                snap.forEach(d => { const x = d.data(); map[d.id] = x; list.push(x); });
+                cloudRemote = map;
+                if (snap.metadata.hasPendingWrites || !list.length) return;
+                list.sort((a, b) => (a.orden || 0) - (b.orden || 0));
+                products = list.map(x => { const p = Object.assign({}, x); delete p.orden; return p; });
+                localStorage.setItem('redpro_products', JSON.stringify(products));
+                renderCategoryPills(); renderHomeCategories(); renderStoreProducts(); renderAdminTable(); updateCartUI();
+            }, err => console.warn('No se pudo leer el catálogo', err));
+
+            FAUTH.onAuthStateChanged(u => {
+                if (!u && currentUser && currentUser.role === 'admin') {
+                    currentUser = null; saveUserSession(); updateClientBanner(); switchTab('home');
+                }
+            });
+        }
+
+        async function cloudAdminLogin(pass) {
+            if (!FDB || !FAUTH) throw new Error('sin conexión');
+            const tienda = FDB.collection('tiendas').doc(FDC_TIENDA);
+            try {
+                await FAUTH.signInWithEmailAndPassword(FDC_ADMIN_EMAIL, pass);
+            } catch (e) {
+                const t = await tienda.get();
+                if (t.exists) throw new Error('clave');
+                if ((pass || '').length < 6) throw new Error('corta');
+                try { await FAUTH.createUserWithEmailAndPassword(FDC_ADMIN_EMAIL, pass); }
+                catch (e2) { if (e2.code === 'auth/email-already-in-use') throw new Error('clave'); throw e2; }
+            }
+            const t2 = await tienda.get();
+            if (!t2.exists) await tienda.set({ owner: FAUTH.currentUser.uid, creada: firebase.firestore.FieldValue.serverTimestamp() });
+            // Primera vez: si la nube está vacía, sube los productos cargados en este dispositivo.
+            const prods = await tienda.collection('productos').get();
+            if (prods.empty) await cloudPush();
+        }
+
+        function cloudSyncProducts() {
+            if (!FDB || !FAUTH || !FAUTH.currentUser || !currentUser || currentUser.role !== 'admin') return;
+            clearTimeout(cloudTimer);
+            cloudTimer = setTimeout(() => cloudPush().catch(err => {
+                console.warn(err);
+                showToast('No se pudo guardar en la nube. Revisá la conexión.', 'warning');
+            }), 400);
+        }
+
+        async function cloudPush() {
+            const ref = FDB.collection('tiendas').doc(FDC_TIENDA).collection('productos');
+            const ops = [], ids = new Set();
+            products.forEach((p, i) => {
+                const id = String(p.id).replace(/\//g, '_');
+                ids.add(id);
+                const d = cloudClean(Object.assign({}, p, { orden: i }));
+                const r = cloudRemote[id];
+                if (!r || cloudStable(r) !== cloudStable(d)) ops.push([id, d]);
+            });
+            Object.keys(cloudRemote).forEach(id => { if (!ids.has(id)) ops.push([id, null]); });
+            for (let i = 0; i < ops.length; i += 20) {
+                const b = FDB.batch();
+                ops.slice(i, i + 20).forEach(([id, d]) => d ? b.set(ref.doc(id), d) : b.delete(ref.doc(id)));
+                await b.commit();
+            }
+            if (ops.length) showToast('Catálogo guardado en la nube ☁️', 'success');
         }
     </script>
 </body>
