@@ -3210,8 +3210,9 @@
         function cloudInit() {
             try {
                 if (!window.firebase || !window.VENTIUN_FIREBASE) return;
-                if (!firebase.apps.length) firebase.initializeApp(window.VENTIUN_FIREBASE);
-                FDB = firebase.firestore(); FAUTH = firebase.auth();
+                // Sesión propia de Flor del Ceibo: no se mezcla con las otras apps (comparten la dirección web)
+                const app = firebase.apps.find(a => a.name === 'flordelceibo') || firebase.initializeApp(window.VENTIUN_FIREBASE, 'flordelceibo');
+                FDB = app.firestore(); FAUTH = app.auth();
             } catch (e) { console.warn('Nube no disponible', e); FDB = FAUTH = null; return; }
 
             FDB.collection('tiendas').doc(FDC_TIENDA).collection('productos').onSnapshot(snap => {
