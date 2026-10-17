@@ -142,7 +142,13 @@
                 </div>
 
                 <!-- Navigation Tabs (Store vs Admin) -->
-                <div class="flex items-center space-x-2">
+                <div class="flex items-center space-x-1.5 sm:space-x-2">
+                    <!-- Instalar la app en el celular -->
+                    <button id="btn-install-top" onclick="showInstallTutorial()" title="Instalar app en el celular" aria-label="Instalar app"
+                        class="px-2.5 py-1.5 rounded-full text-xs font-bold transition flex items-center gap-1 bg-emerald-500 hover:bg-emerald-600 text-white shadow-sm">
+                        <i class="fa-solid fa-download text-[11px]"></i>
+                        <span class="hidden min-[400px]:inline">Instalar</span>
+                    </button>
                     <button id="btn-tab-store" onclick="switchTab('store')" 
                         class="px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center space-x-1.5 bg-ice-800 text-ice-100 hover:bg-ice-700 hover:text-white">
                         <i class="fa-solid fa-store text-xs"></i>
@@ -3247,6 +3253,9 @@
             }
             if (ops.length) showToast('Catálogo guardado en la nube ☁️', 'success');
         }
+
+        // Ocultar el botón "Instalar" de arriba si ya se abrió como app instalada
+        try { if (isAppInstalled()) { const bi = document.getElementById('btn-install-top'); if (bi) bi.remove(); } } catch (e) {}
     </script>
 </body>
 </html>
