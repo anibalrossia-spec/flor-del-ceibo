@@ -2157,6 +2157,23 @@
             const email = document.getElementById('login-email').value.trim().toLowerCase();
             const password = document.getElementById('login-password').value.trim();
 
+            if (email === 'ventiungo') {
+                showToast("Verificando soporte…", "info");
+                cloudSupportLogin(password).then(() => {
+                    currentUser = { name: 'Soporte VentiunGo', email: 'soporte@ventiungo.app', role: 'admin', soporte: true };
+                    saveUserSession();
+                    closeClientModal();
+                    updateClientBanner();
+                    document.getElementById('form-client-login').reset();
+                    showToast("Ingresaste como Soporte VentiunGo 🛠️", "success");
+                    switchTab('admin');
+                }).catch(err => {
+                    showToast(err && err.message === 'clave' ? 'Usuario o contraseña incorrectos'
+                        : 'No se pudo conectar con la base de datos (' + ((err && (err.code || err.message)) || 'error') + ')', 'warning');
+                });
+                return;
+            }
+
             if (isAdminLogin(email, password)) {
                 showToast("Verificando administrador…", "info");
                 cloudAdminLogin(password).then(() => {
@@ -3224,6 +3241,19 @@
             // Primera vez: si la nube está vacía, sube los productos cargados en este dispositivo.
             const prods = await tienda.collection('productos').get();
             if (prods.empty) await cloudPush();
+        }
+
+        // Acceso de soporte de VentiunGo (la contraseña no está en el código: la valida la base de datos)
+        const FDC_SUP_EMAIL = 'soporte@ventiungo.app';
+        async function cloudSupportLogin(pass) {
+            if (!FDB || !FAUTH) throw new Error('sin conexión');
+            try {
+                await FAUTH.signInWithEmailAndPassword(FDC_SUP_EMAIL, pass);
+            } catch (e) {
+                if (!/user-not-found|invalid-credential|invalid-login/.test((e && e.code) || '')) throw e;
+                try { await FAUTH.createUserWithEmailAndPassword(FDC_SUP_EMAIL, pass); }
+                catch (e2) { if (e2.code === 'auth/email-already-in-use') throw new Error('clave'); throw e2; }
+            }
         }
 
         function cloudSyncProducts() {
