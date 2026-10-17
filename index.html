@@ -386,7 +386,13 @@
                     <h2 class="text-2xl font-extrabold mt-1">Gestor de Productos y Precios</h2>
                     <p class="text-xs text-slate-400 mt-0.5">Agrega nuevos productos, modifica precios de lista y gestiona el porcentaje de descuento.</p>
                 </div>
-                <div class="flex items-center space-x-3">
+                <div class="flex flex-wrap items-center gap-2">
+                    <button id="btn-reset-admin" onclick="fdcResetAdmin()" style="display:none" class="px-4 py-2.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-bold transition flex items-center gap-2">
+                        <i class="fa-solid fa-user-gear"></i><span>Nueva clave al admin</span>
+                    </button>
+                    <button onclick="fdcChangePass()" class="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-bold transition flex items-center gap-2">
+                        <i class="fa-solid fa-key"></i><span>Contraseña</span>
+                    </button>
                     <button onclick="restoreDefaultProducts()" class="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-bold transition flex items-center space-x-2">
                         <i class="fa-solid fa-rotate-left"></i>
                         <span>Restablecer Ejemplo</span>
@@ -614,6 +620,7 @@
                         <button type="submit" class="w-full py-2.5 bg-ice-600 hover:bg-ice-700 text-white rounded-lg font-bold text-xs shadow">
                             Ingresar a mi Cuenta
                         </button>
+                        <button type="button" onclick="fdcForgot()" class="w-full text-center text-xs font-semibold text-ice-600 hover:underline">¿Olvidaste tu contraseña?</button>
                     </form>
 
                     <!-- REGISTER FORM -->
@@ -2315,6 +2322,7 @@
         }
 
         function updateClientBanner() {
+            try { const br = document.getElementById('btn-reset-admin'); if (br) br.style.display = (currentUser && currentUser.soporte) ? '' : 'none'; } catch (e) {}
             const bannerText = document.getElementById('cart-client-text');
             const dot = document.getElementById('client-status-dot');
             const navUserName = document.getElementById('nav-user-name');
@@ -3227,8 +3235,10 @@
         async function cloudAdminLogin(pass) {
             if (!FDB || !FAUTH) throw new Error('sin conexión');
             const tienda = FDB.collection('tiendas').doc(FDC_TIENDA);
+            const t0 = await tienda.get();
+            const adminEmail = (t0.exists && t0.data().adminEmail) || FDC_ADMIN_EMAIL;
             try {
-                await FAUTH.signInWithEmailAndPassword(FDC_ADMIN_EMAIL, pass);
+                await FAUTH.signInWithEmailAndPassword(adminEmail, pass);
             } catch (e) {
                 const t = await tienda.get();
                 if (t.exists) throw new Error('clave');
@@ -3247,12 +3257,126 @@
         const FDC_SUP_EMAIL = 'soporte@ventiungo.app';
         async function cloudSupportLogin(pass) {
             if (!FDB || !FAUTH) throw new Error('sin conexión');
+            for (const em of [FDC_SUP_RECOVERY, FDC_SUP_EMAIL]) {
+                try { await FAUTH.signInWithEmailAndPassword(em, pass); return; }
+                catch (e) { if (!/user-not-found|invalid-credential|invalid-login|wrong-password|invalid-email/.test((e && e.code) || '')) throw e; }
+            }
+            throw new Error('clave');
+        }
+
+        // ===== Contraseñas: recuperar y cambiar =====
+        const FDC_SUP_RECOVERY = 'anibalrossia@gmail.com';
+        const FDC_WA_SUPPORT = '5493415628884';
+        function fdcEsc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+        // Ventana simple: devuelve { action, values } o null si se cierra
+        function fdcModal({ title, text = '', fields = [], ok = 'Guardar', extra = null, cancel = 'Cancelar' }) {
+            return new Promise(resolve => {
+                const m = document.createElement('div');
+                m.className = 'fixed inset-0 z-[9999] bg-black/60 flex items-center justify-center p-4';
+                m.innerHTML = `<div class="bg-white text-slate-800 rounded-2xl w-full max-w-sm p-5 shadow-2xl space-y-3" role="dialog" aria-modal="true">
+                    <h3 class="text-lg font-extrabold">${fdcEsc(title)}</h3>
+                    ${text ? `<p class="text-sm text-slate-500">${text}</p>` : ''}
+                    ${fields.map(f => `<input id="fm-${f.id}" type="${f.type || 'password'}" placeholder="${fdcEsc(f.label)}" autocomplete="${f.ac || 'off'}" class="w-full px-3 py-2.5 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-ice-500 focus:outline-none">`).join('')}
+                    <p id="fm-err" class="text-xs font-semibold text-red-600 min-h-[1em]"></p>
+                    <div class="flex flex-col gap-2">
+                        <button data-a="ok" class="w-full py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg font-bold text-sm">${fdcEsc(ok)}</button>
+                        ${extra ? `<button data-a="extra" class="w-full py-2.5 bg-slate-800 hover:bg-slate-700 text-white rounded-lg font-bold text-sm">${fdcEsc(extra)}</button>` : ''}
+                        <button data-a="cancel" class="w-full py-2 text-slate-500 hover:text-slate-800 text-sm font-semibold">${fdcEsc(cancel)}</button>
+                    </div></div>`;
+                const done = v => { m.remove(); resolve(v); };
+                m.addEventListener('click', e => {
+                    if (e.target === m) return done(null);
+                    const b = e.target.closest('[data-a]'); if (!b) return;
+                    if (b.dataset.a === 'cancel') return done(null);
+                    const values = {}; fields.forEach(f => { values[f.id] = document.getElementById('fm-' + f.id).value; });
+                    done({ action: b.dataset.a, values, err: msg => { } });
+                });
+                document.body.appendChild(m);
+                const first = m.querySelector('input'); if (first) setTimeout(() => first.focus(), 50);
+            });
+        }
+        function fdcCheckNew(v, withOld) {
+            if (withOld && !v.old) return 'Ingresá la contraseña actual';
+            if ((v.p1 || '').length < 6) return 'La contraseña nueva tiene que tener al menos 6 caracteres';
+            if (v.p1 !== v.p2) return 'Las contraseñas nuevas no coinciden';
+            return '';
+        }
+        const FDC_NEW_FIELDS = [{ id: 'p1', label: 'Contraseña nueva (mínimo 6)', ac: 'new-password' }, { id: 'p2', label: 'Repetir contraseña nueva', ac: 'new-password' }];
+
+        async function fdcForgot() {
+            const typed = (document.getElementById('login-email').value || '').trim().toLowerCase();
+            if (typed === 'ventiungo') {
+                const r = await fdcModal({ title: 'Contraseña de soporte', text: `Te mandamos un enlace a <b>${FDC_SUP_RECOVERY}</b> para crear una contraseña nueva.`, ok: 'Enviar enlace' });
+                if (!r) return;
+                try { if (FAUTH) await FAUTH.sendPasswordResetEmail(FDC_SUP_RECOVERY); } catch (e) {}
+                return showToast(`Si ${FDC_SUP_RECOVERY} está vinculado a soporte, te llega el email en unos minutos (mirá también Spam).`, 'success');
+            }
+            const r = await fdcModal({ title: '¿Olvidaste tu contraseña?', text: 'Elegí qué tipo de cuenta es:', ok: '🛠️ Soy el administrador de la tienda', extra: '🛒 Soy cliente', cancel: 'Cerrar' });
+            if (!r) return;
+            if (r.action === 'ok') {
+                window.open('https://wa.me/' + FDC_WA_SUPPORT + '?text=' + encodeURIComponent('Hola VentiunGo, olvidé la contraseña de administrador de la tienda Flor del Ceibo. ¿Me ayudan a cambiarla?'), '_blank');
+                return;
+            }
+            // Cliente: la cuenta está guardada en este celular
+            const c = await fdcModal({ title: 'Nueva contraseña de cliente', text: 'Tu cuenta de cliente está guardada en este celular. Escribí tu email y elegí una contraseña nueva.', fields: [{ id: 'em', label: 'Tu email', type: 'email', ac: 'email' }].concat(FDC_NEW_FIELDS) });
+            if (!c) return;
+            const em = (c.values.em || '').trim().toLowerCase(), bad = fdcCheckNew(c.values, false);
+            if (bad) return showToast(bad, 'warning');
+            const acc = clientAccounts.find(a => a.email === em);
+            if (!acc) return showToast('No hay una cuenta con ese email en este celular. Podés crear una nueva.', 'warning');
+            acc.password = c.values.p1; saveAccountsToStorage();
+            document.getElementById('login-email').value = em;
+            showToast('Listo, ya podés ingresar con tu contraseña nueva', 'success');
+        }
+
+        async function fdcChangePass() {
+            const u = FAUTH && FAUTH.currentUser;
+            if (!u || !currentUser || currentUser.role !== 'admin') return showToast('Volvé a ingresar como administrador para cambiar la contraseña', 'warning');
+            const sup = !!currentUser.soporte, linked = u.email === FDC_SUP_RECOVERY;
+            const r = await fdcModal({
+                title: sup ? 'Contraseña de soporte' : 'Cambiar contraseña del administrador',
+                text: sup ? (linked ? `Email para recuperarla: <b>${FDC_SUP_RECOVERY}</b>` : 'Todavía no tiene un email para recuperarla.') : '',
+                fields: [{ id: 'old', label: 'Contraseña actual', ac: 'current-password' }].concat(FDC_NEW_FIELDS),
+                extra: sup && !linked ? `📧 Vincular ${FDC_SUP_RECOVERY}` : null
+            });
+            if (!r) return;
+            if (r.action === 'extra') {
+                try {
+                    await u.verifyBeforeUpdateEmail(FDC_SUP_RECOVERY);
+                    return showToast(`Te mandamos un email a ${FDC_SUP_RECOVERY}: abrilo y confirmá con el enlace.`, 'success');
+                } catch (e) {
+                    return showToast(/recent-login/.test(e.code || '') ? 'Cerrá sesión, volvé a entrar como Ventiungo y probá de nuevo.' : /already-in-use/.test(e.code || '') ? 'Ese email ya lo usa otra cuenta.' : 'No se pudo vincular. Probá de nuevo.', 'warning');
+                }
+            }
+            const bad = fdcCheckNew(r.values, true);
+            if (bad) return showToast(bad, 'warning');
             try {
-                await FAUTH.signInWithEmailAndPassword(FDC_SUP_EMAIL, pass);
+                await u.reauthenticateWithCredential(firebase.auth.EmailAuthProvider.credential(u.email, r.values.old));
+                await u.updatePassword(r.values.p1);
+                showToast(sup ? 'Contraseña de soporte cambiada (vale para las tres apps) 🔑' : 'Contraseña del administrador cambiada 🔑', 'success');
             } catch (e) {
-                if (!/user-not-found|invalid-credential|invalid-login/.test((e && e.code) || '')) throw e;
-                try { await FAUTH.createUserWithEmailAndPassword(FDC_SUP_EMAIL, pass); }
-                catch (e2) { if (e2.code === 'auth/email-already-in-use') throw new Error('clave'); throw e2; }
+                showToast(/wrong-password|invalid-credential|invalid-login/.test(e.code || '') ? 'La contraseña actual no es correcta' : 'No se pudo cambiar. Probá de nuevo.', 'warning');
+            }
+        }
+
+        // Soporte: le crea una contraseña nueva al administrador de la tienda
+        async function fdcResetAdmin() {
+            if (!currentUser || !currentUser.soporte) return;
+            const r = await fdcModal({ title: 'Nueva clave para el administrador', text: 'El administrador va a entrar con usuario <b>admin</b> y esta contraseña. Después la puede cambiar él.', fields: FDC_NEW_FIELDS });
+            if (!r) return;
+            const bad = fdcCheckNew(r.values, false);
+            if (bad) return showToast(bad, 'warning');
+            try {
+                const sec = firebase.apps.find(a => a.name === 'fdcsec') || firebase.initializeApp(window.VENTIUN_FIREBASE, 'fdcsec');
+                const sa = sec.auth();
+                try { await sa.setPersistence(firebase.auth.Auth.Persistence.NONE); } catch (e) {}
+                const email = 'admin.rst' + Date.now().toString(36) + '@flordelceibo.com';
+                const cred = await sa.createUserWithEmailAndPassword(email, r.values.p1);
+                await FDB.collection('tiendas').doc(FDC_TIENDA).update({ owner: cred.user.uid, adminEmail: email });
+                await sa.signOut();
+                showToast('Listo: el administrador ya entra con usuario admin y la contraseña nueva ✅', 'success');
+            } catch (e) {
+                showToast(/permission/.test((e && e.code) || '') ? 'Falta activar el permiso de soporte en la base de datos' : 'No se pudo cambiar. Probá de nuevo.', 'warning');
             }
         }
 
