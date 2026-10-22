@@ -161,6 +161,11 @@
                         <span class="hidden sm:inline">Administrar</span>
                     </button>
 
+                    <!-- Actualizar la app sin cerrar la sesión -->
+                    <button type="button" onclick="actualizarApp()" class="p-2 text-ice-100 hover:text-white hover:bg-ice-800 rounded-lg" title="Actualizar la app" aria-label="Actualizar la app">
+                        <i class="fa-solid fa-rotate-right text-base"></i>
+                    </button>
+
                     <!-- Botón fondo blanco / negro -->
                     <button id="btn-theme" type="button" onclick="toggleTheme()" class="p-2 text-ice-100 hover:text-white hover:bg-ice-800 rounded-lg" title="Cambiar a fondo negro" aria-label="Cambiar fondo blanco o negro">
                         <span id="theme-icon-moon"><i class="fa-solid fa-moon text-base"></i></span>
@@ -1326,7 +1331,22 @@
             updateClientBanner();
             renderHomeCategories();
             cloudInit();
+            // Al actualizar, volver a la misma pantalla
+            try { const lt = localStorage.getItem('fdc_tab'); if (lt === 'store' || lt === 'admin') switchTab(lt); } catch (e) {}
         });
+
+        // Actualizar la app (busca la versión nueva y recarga sin cerrar la sesión)
+        function actualizarApp() {
+            const go = () => location.reload();
+            try {
+                if (navigator.serviceWorker && navigator.serviceWorker.getRegistration) {
+                    navigator.serviceWorker.getRegistration().then(r => r && r.update()).catch(() => {}).then(go);
+                    setTimeout(go, 1500);
+                    return;
+                }
+            } catch (e) {}
+            go();
+        }
 
         function loadStateFromStorage() {
             const storedProds = localStorage.getItem('redpro_products');
@@ -1394,6 +1414,7 @@
             const IDLE = "px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center space-x-1.5 bg-ice-800 text-ice-100 hover:bg-ice-700 hover:text-white";
 
             if (tab === 'admin' && (!currentUser || currentUser.role !== 'admin')) tab = 'home';
+            try { localStorage.setItem('fdc_tab', tab); } catch (e) {}
 
             viewHome.classList.toggle('hidden', tab !== 'home');
             viewStore.classList.toggle('hidden', tab !== 'store');
