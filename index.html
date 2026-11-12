@@ -2186,7 +2186,7 @@
         const ADMIN_PASS = 'admin123';
 
         function isAdminLogin(user, pass) {
-            return (user === ADMIN_USER || user === 'admin@flordelceibo.com');
+            return (user === ADMIN_USER || user === 'admin@flordelceibo.com' || (FDC_TIENDA === 'flor-del-ceibo' && user === 'flor'));
         }
 
         function setAuthTab(tab) {
@@ -3816,7 +3816,7 @@ window.VGSubs = (function () {
         // Soporte: le crea una contraseña nueva al administrador de la tienda
         async function fdcResetAdmin() {
             if (!currentUser || !currentUser.soporte) return;
-            const r = await fdcModal({ title: 'Nueva clave para el administrador', text: 'El administrador va a entrar con usuario <b>admin</b> y esta contraseña. Después la puede cambiar él.', fields: FDC_NEW_FIELDS });
+            const r = await fdcModal({ title: 'Nueva clave para el administrador', text: 'El administrador va a entrar con usuario <b>' + (FDC_TIENDA === 'flor-del-ceibo' ? 'flor' : fdcEsc(FDC_STORE.nombre || 'admin')) + '</b> y esta contraseña. Después la puede cambiar él.', fields: FDC_NEW_FIELDS });
             if (!r) return;
             const bad = fdcCheckNew(r.values, false);
             if (bad) return showToast(bad, 'warning');
@@ -3828,7 +3828,7 @@ window.VGSubs = (function () {
                 const cred = await sa.createUserWithEmailAndPassword(email, r.values.p1);
                 await FDB.collection('tiendas').doc(FDC_TIENDA).update({ owner: cred.user.uid, adminEmail: email });
                 await sa.signOut();
-                showToast('Listo: el administrador ya entra con usuario admin y la contraseña nueva ✅', 'success');
+                showToast('Listo: el administrador ya entra con usuario ' + (FDC_TIENDA === 'flor-del-ceibo' ? 'flor' : (FDC_STORE.nombre || 'admin')) + ' y la contraseña nueva ✅', 'success');
             } catch (e) {
                 showToast(/permission/.test((e && e.code) || '') ? 'Falta activar el permiso de soporte en la base de datos' : 'No se pudo cambiar. Probá de nuevo.', 'warning');
             }
@@ -4116,7 +4116,7 @@ window.VGSubs = (function () {
                 ${sub === 'ingresar' ? `
                 <form id="fdc-f-login" class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 space-y-3" novalidate>
                     <h3 class="font-extrabold text-slate-900 text-lg">Iniciá sesión en tu tienda</h3>
-                    <div><label class="${lbl}" for="fdc-l-n">NOMBRE DE TU TIENDA</label><input id="fdc-l-n" class="${inp}" autocomplete="username" placeholder="Ej: Flor del Ceibo"></div>
+                    <div><label class="${lbl}" for="fdc-l-n">USUARIO O NOMBRE DE TU TIENDA</label><input id="fdc-l-n" class="${inp}" autocomplete="username" autocapitalize="none" placeholder="Ej: flor"></div>
                     <div><label class="${lbl}" for="fdc-l-p">CONTRASEÑA</label><input id="fdc-l-p" type="password" class="${inp}" autocomplete="current-password"></div>
                     <p id="fdc-l-err" class="text-xs font-semibold text-red-600 min-h-[1em]"></p>
                     <button id="fdc-l-btn" type="submit" class="w-full py-3 bg-ice-600 hover:bg-ice-700 text-white rounded-xl font-bold text-sm">Ingresar</button>
@@ -4163,7 +4163,9 @@ window.VGSubs = (function () {
             err.textContent = '';
             if (!nombre || !pass) { err.textContent = 'Escribí el nombre de tu tienda y la contraseña.'; return; }
             if (!FDB || !FAUTH) { err.textContent = 'No hay conexión con la base de datos. Probá de nuevo.'; return; }
-            const slug = fdcSlug(nombre);
+            // Usuarios cortos de algunas tiendas (ej.: "flor" = Flor del Ceibo)
+            const FDC_ALIAS = { flor: 'flor-del-ceibo', admin: 'flor-del-ceibo' };
+            const slug = FDC_ALIAS[fdcSlug(nombre)] || fdcSlug(nombre);
             btn.disabled = true; btn.textContent = 'Entrando…';
             try {
                 const sn = slug ? await FDB.collection('tiendas').doc(slug).get() : null;
