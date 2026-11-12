@@ -21,9 +21,9 @@
     };
     </script>
     <script>
-    // ===== VentiunGo Congelados: varias tiendas =====
+    // ===== VentiunGo Tienda: varias tiendas =====
     // ?t=nombre-de-la-tienda abre esa tienda. Sin parámetro: la última tienda abierta en este celular
-    // (los clientes de siempre siguen entrando a Flor del Ceibo); si nunca abrió una, la página de VentiunGo Congelados.
+    // (los clientes de siempre siguen entrando a Flor del Ceibo); si nunca abrió una, la página de VentiunGo Tienda.
     (function () {
         var ls = function (k) { try { return localStorage.getItem(k) || ''; } catch (e) { return ''; } };
         var p = null; try { p = new URLSearchParams(location.search); } catch (e) {}
@@ -34,8 +34,8 @@
         window.FDC_SLUG = slug;
         window.fdcKey = function (k) { return (!window.FDC_SLUG || window.FDC_SLUG === 'flor-del-ceibo') ? k : k + '__' + window.FDC_SLUG; };
         window.FDC_DEFAULTS = {
-            'flor-del-ceibo': { nombre: 'Flor del Ceibo', descripcion: 'Los mejores alimentos congelados a tu puerta. Milanesas, rebozados, verduras, chipas y panadería con envío a domicilio en Rosario y zonas aledañas.', whatsapp: '5493415628884', whatsapp2: '5493416536413', ciudad: 'Rosario', zona: 'Rosario y zonas aledañas', minimo: 20000, pagos: 'Efectivo, transferencia o Mercado Pago', logo: '', publico: true },
-            nueva: { nombre: '', descripcion: '', whatsapp: '', whatsapp2: '', ciudad: '', zona: '', minimo: 0, pagos: 'Efectivo, transferencia o Mercado Pago', logo: '', publico: true }
+            'flor-del-ceibo': { nombre: 'Flor del Ceibo', descripcion: 'Los mejores alimentos congelados a tu puerta. Milanesas, rebozados, verduras, chipas y panadería con envío a domicilio en Rosario y zonas aledañas.', whatsapp: '5493415628884', whatsapp2: '5493416536413', ciudad: 'Rosario', zona: 'Rosario y zonas aledañas', minimo: 20000, pagos: 'Efectivo, transferencia o Mercado Pago', logo: '', publico: true, cobro: 'whatsapp', mpLink: '', mpAlias: '' },
+            nueva: { nombre: '', descripcion: '', whatsapp: '', whatsapp2: '', ciudad: '', zona: '', minimo: 0, pagos: 'Efectivo, transferencia o Mercado Pago', logo: '', publico: true, cobro: 'whatsapp', mpLink: '', mpAlias: '' }
         };
         var cached = {}; try { cached = JSON.parse(ls(window.fdcKey('fdc_store')) || '{}') || {}; } catch (e) {}
         window.FDC_STORE = Object.assign({}, window.FDC_DEFAULTS[slug === 'flor-del-ceibo' ? 'flor-del-ceibo' : 'nueva'], cached);
@@ -190,7 +190,7 @@
                     <button id="btn-comercio" onclick="fdcPlatform('acceso','ingresar')" class="fdc-hide px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 bg-white text-ice-800 hover:bg-ice-50">
                         <i class="fa-solid fa-store text-xs"></i><span>Soy comercio</span>
                     </button>
-                    <button id="btn-info" onclick="fdcGoInfo()" class="p-2 text-ice-100 hover:text-white hover:bg-ice-800 rounded-lg" title="VentiunGo Congelados: información del servicio" aria-label="Información del servicio">
+                    <button id="btn-info" onclick="fdcGoInfo()" class="p-2 text-ice-100 hover:text-white hover:bg-ice-800 rounded-lg" title="VentiunGo Tienda: información del servicio" aria-label="Información del servicio">
                         <i class="fa-solid fa-circle-info text-base"></i>
                     </button>
                     <!-- Actualizar la app sin cerrar la sesión -->
@@ -225,7 +225,7 @@
     <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
 
         <!-- ========================================== -->
-        <!-- VentiunGo Congelados: información del servicio y cuenta del comercio -->
+        <!-- VentiunGo Tienda: información del servicio y cuenta del comercio -->
         <div id="view-platform" class="space-y-8 hidden"></div>
         <div id="view-acceso" class="space-y-6 hidden"></div>
 
@@ -237,7 +237,7 @@
             <div class="bg-gradient-to-r from-ice-700 via-ice-600 to-ice-900 rounded-3xl p-6 sm:p-10 text-white shadow-xl relative overflow-hidden">
                 <div class="relative z-10 max-w-2xl space-y-4">
                     <div class="flex flex-wrap items-center gap-2">
-                        <span class="bg-white/20 text-white backdrop-blur-md px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider">
+                        <span data-fdc="rubro" class="bg-white/20 text-white backdrop-blur-md px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider">
                             ❄️ Alimentos congelados
                         </span>
                         <button onclick="showInstallTutorial()" class="bg-emerald-500/90 text-white hover:bg-emerald-500 backdrop-blur-md px-3 py-1 rounded-full text-xs font-bold transition flex items-center space-x-1 shadow-sm">
@@ -359,9 +359,9 @@
                 </button>
             </div>
 
-            <!-- VentiunGo Congelados -->
+            <!-- VentiunGo Tienda -->
             <button type="button" onclick="fdcGoInfo()" class="w-full text-center text-xs text-slate-500 hover:text-ice-600 py-2">
-                ¿Tenés un comercio de congelados? <strong class="text-ice-600">Creá tu tienda en VentiunGo Congelados</strong>
+                ¿Tenés un comercio? <strong class="text-ice-600">Creá tu tienda online en VentiunGo Tienda</strong>
             </button>
         </div>
 
@@ -830,7 +830,7 @@
         <div class="bg-ice-900 px-6 py-4 text-white flex justify-between items-center">
             <div class="flex items-center space-x-2">
                 <i class="fa-solid fa-cart-shopping text-ice-400"></i>
-                <h3 class="font-bold text-lg">Tu Pedido de Congelados</h3>
+                <h3 class="font-bold text-lg">Tu Pedido</h3>
             </div>
             <button onclick="toggleCartDrawer()" class="text-slate-400 hover:text-white text-xl"><i class="fa-solid fa-xmark"></i></button>
         </div>
@@ -878,14 +878,19 @@
                 </div>
             </div>
 
-            <button onclick="sendOrderToWhatsApp()" 
+            <button id="btn-pay-mp" onclick="sendOrderToWhatsApp('mp')"
+                class="fdc-hide w-full py-3.5 bg-sky-500 hover:bg-sky-600 text-white rounded-xl font-bold text-base shadow-lg shadow-sky-500/30 flex items-center justify-center gap-2 transition">
+                <i class="fa-solid fa-credit-card text-xl"></i>
+                <span>Pagar con Mercado Pago</span>
+            </button>
+            <button id="btn-pay-wa" onclick="sendOrderToWhatsApp('wa')" 
                 class="w-full py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-base shadow-lg shadow-emerald-600/30 flex items-center justify-center space-x-2 transition transform active:scale-95">
                 <i class="fa-brands fa-whatsapp text-2xl"></i>
                 <span>Enviar Pedido por WhatsApp</span>
             </button>
 
             <p class="text-[11px] text-center text-slate-400">
-                El pedido se enviará al WhatsApp <strong class="text-slate-600">+54 9 341 562-8884</strong> listo para procesar.
+                <span id="fdc-pay-note">El pedido se enviará al WhatsApp</span> <strong data-fdcwatxt="1" class="text-slate-600">+54 9 341 562-8884</strong> listo para procesar.
             </p>
         </div>
 
@@ -924,14 +929,15 @@
                 <button onclick="closeWhatsAppModal()" class="text-white/80 hover:text-white text-xl"><i class="fa-solid fa-xmark"></i></button>
             </div>
             <div class="p-6 space-y-4 overflow-y-auto">
-                <p class="text-xs text-slate-600">Tu pedido quedó guardado. Tocá el botón para abrir WhatsApp con el mensaje listo y enviarlo.</p>
+                <div id="fdc-mp-box" class="hidden space-y-2 p-4 rounded-xl bg-sky-50 border border-sky-200"></div>
+                <p id="fdc-wa-step" class="text-xs text-slate-600">Tu pedido quedó guardado. Tocá el botón para abrir WhatsApp con el mensaje listo y enviarlo.</p>
                 <a id="wa-open-link" href="#" target="_blank" rel="noopener noreferrer"
                     class="w-full py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-base shadow-lg shadow-emerald-600/30 flex items-center justify-center space-x-2 transition">
                     <i class="fa-brands fa-whatsapp text-2xl"></i>
-                    <span>Abrir WhatsApp y enviar</span>
+                    <span id="fdc-wa-btn-txt">Abrir WhatsApp y enviar</span>
                 </a>
                 <div class="space-y-2">
-                    <p class="text-[11px] text-slate-500">Si WhatsApp no se abre, copiá el mensaje y envialo al <strong class="text-slate-700 select-all">+54 9 341 562-8884</strong></p>
+                    <p class="text-[11px] text-slate-500">Si WhatsApp no se abre, copiá el mensaje y envialo al <strong data-fdcwatxt="1" class="text-slate-700 select-all">+54 9 341 562-8884</strong></p>
                     <textarea id="wa-message-text" rows="6" readonly class="w-full px-3 py-2 border border-slate-300 rounded-lg text-[11px] font-mono bg-slate-50 text-slate-700"></textarea>
                     <button type="button" onclick="copyWhatsAppMessage()" class="w-full py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-lg font-bold text-xs flex items-center justify-center space-x-2">
                         <i class="fa-solid fa-copy"></i>
@@ -2724,7 +2730,8 @@
             }
         }
 
-        function sendOrderToWhatsApp() {
+        function sendOrderToWhatsApp(modo) {
+            const pagaMP = modo === 'mp' && fdcMpOn();
             if (cart.length === 0) {
                 showToast("Tu carrito está vacío. Agrega productos primero.", "warning");
                 return;
@@ -2755,7 +2762,7 @@
                 return;
             }
 
-            let message = `*❄️ NUEVO PEDIDO - ${String(FDC_STORE.nombre || 'VentiunGo Congelados').toUpperCase()} ❄️*\n\n`;
+            let message = `*❄️ NUEVO PEDIDO - ${String(FDC_STORE.nombre || 'VentiunGo Tienda').toUpperCase()} ❄️*\n\n`;
             message += `*👤 DATOS DEL CLIENTE:*\n`;
             message += `• *Nombre:* ${currentUser.name}\n`;
             message += `• *Dirección:* ${currentUser.address}\n`;
@@ -2801,6 +2808,7 @@
             }
             message += `👉 *TOTAL FINAL A PAGAR: $${totalFinal.toLocaleString('es-AR')}*\n\n`;
             if (FDC_STORE.zona) message += `📍 *Zona de reparto:* ${FDC_STORE.zona}\n`;
+            if (pagaMP) message += `💳 *Pago:* Mercado Pago${FDC_STORE.mpAlias ? ' (alias ' + FDC_STORE.mpAlias + ')' : ''}. Te adjunto el comprobante.\n`;
             message += `Por favor confirmen la recepción del pedido. ¡Muchas gracias!`;
 
             // Save order to history
@@ -2812,7 +2820,7 @@
                 items: orderItems,
                 totalList,
                 totalFinal,
-                status: 'Enviado por WhatsApp'
+                status: pagaMP ? 'Pagado con Mercado Pago' : 'Enviado por WhatsApp'
             };
 
             orders.unshift(newOrder);
@@ -2833,7 +2841,8 @@
             document.getElementById('wa-message-text').value = message;
             document.getElementById('modal-whatsapp').classList.remove('hidden');
 
-            showToast("¡Pedido guardado en tu historial! Tocá el botón para enviarlo por WhatsApp 📲", "success");
+            fdcPayStep(pagaMP, totalFinal);
+            showToast(pagaMP ? "¡Pedido guardado! Pagalo con Mercado Pago y después envialo por WhatsApp 💳" : "¡Pedido guardado en tu historial! Tocá el botón para enviarlo por WhatsApp 📲", "success");
         }
 
         function closeWhatsAppModal() {
@@ -3292,7 +3301,7 @@ window.VGSubs = (function () {
       { id: 'pro', nombre: 'Pro (App + Web)', icono: '💻', base: 31200, recomendado: true, cinta: 'Recomendado para emprendedores', no: ['Documento electrónico'] }
     ]
   };
-  var APPS = { peluquerias: 'VentiunGo Peluquerías', sociocafe: 'Socios Café', flordelceibo: 'VentiunGo Congelados', redpro: 'RedPro' };
+  var APPS = { peluquerias: 'VentiunGo Peluquerías', sociocafe: 'Socios Café', flordelceibo: 'VentiunGo Tienda', redpro: 'RedPro' };
   var cur = null, cfg = null, cfgP = null, blockEl = null, pillEl = null, periodo = 'anio', elegido = '';
 
   function h(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
@@ -3857,7 +3866,7 @@ window.VGSubs = (function () {
         try { if (isAppInstalled()) { const bi = document.getElementById('btn-install-top'); if (bi) bi.remove(); } } catch (e) {}
     </script>
     <script>
-        // ===== VentiunGo Congelados: página de información, cuentas de comercio y datos de cada tienda =====
+        // ===== VentiunGo Tienda: página de información, cuentas de comercio y datos de cada tienda =====
         const FDC_CEIBO_LOGO = (document.getElementById('brand-logo') || {}).innerHTML || '';
         const FDC_DOMINIO = '@congelados.ventiungo.app';
         let fdcDirCache = null;
@@ -3894,7 +3903,7 @@ window.VGSubs = (function () {
             WHATSAPP_PHONE = fdcWaNorm(s.whatsapp) || WHATSAPP_PHONE;
             const set = (sel, fn) => document.querySelectorAll(sel).forEach(fn);
             set('#fdc-brand-name, #fdc-hero-name', el => { el.textContent = nombre; });
-            set('[data-fdc="desc"]', el => { el.textContent = s.descripcion || ('Alimentos congelados con envío a domicilio' + (s.zona ? ' en ' + s.zona : '') + '. Armá tu pedido y envialo por WhatsApp.'); });
+            set('[data-fdc="desc"]', el => { el.textContent = s.descripcion || ('Hacé tu pedido online' + (s.zona ? ' con envío en ' + s.zona : '') + '. Armá tu carrito y envialo por WhatsApp.'); });
             set('[data-fdc="zona"]', el => { el.textContent = (el.tagName === 'SPAN' ? ' ' : '') + (s.zona || s.ciudad || 'Consultá la zona de reparto'); });
             set('[data-fdc="minimo"]', el => { el.textContent = fdcMin() ? fdcMoney(fdcMin()) : 'Sin mínimo'; });
             set('[data-fdc="minimotxt"]', el => { el.textContent = 'Compra mínima: ' + fdcMoney(fdcMin()); });
@@ -3907,6 +3916,11 @@ window.VGSubs = (function () {
             set('[data-fdcwatxt="2"]', el => { el.textContent = fdcWaShow(w2); });
             const fruit = document.getElementById('fdc-fruit'); if (fruit) fruit.classList.toggle('fdc-hide', !fdc);
             const demo = document.getElementById('btn-restore-demo'); if (demo) demo.classList.toggle('fdc-hide', !fdc);
+            set('[data-fdc="rubro"]', el => { el.textContent = fdc ? '❄️ Alimentos congelados' : '🛍️ Tienda online'; });
+            const mpOn = fdcMpOn(), waOn = fdcWaOn();
+            const bmp = document.getElementById('btn-pay-mp'); if (bmp) bmp.classList.toggle('fdc-hide', !mpOn);
+            const bwa = document.getElementById('btn-pay-wa'); if (bwa) bwa.classList.toggle('fdc-hide', !waOn);
+            const pn = document.getElementById('fdc-pay-note'); if (pn) pn.textContent = mpOn && !waOn ? 'Pagás con Mercado Pago y el pedido se envía al WhatsApp' : mpOn ? 'Podés pagarlo con Mercado Pago o enviarlo directo al WhatsApp' : 'El pedido se enviará al WhatsApp';
             const bl = document.getElementById('brand-logo');
             if (bl && !fdc) {
                 bl.innerHTML = s.logo ? `<img src="${fdcEsc(s.logo)}" alt="" style="width:36px;height:36px" class="block rounded-xl object-cover bg-white">` : '<span class="flex items-center justify-center rounded-xl bg-ice-600 text-white" style="width:36px;height:36px"><i class="fa-solid fa-snowflake"></i></span>';
@@ -3922,12 +3936,12 @@ window.VGSubs = (function () {
                 if (!sn.exists) {
                     if (FDC_SLUG === 'flor-del-ceibo') return;
                     try { if (localStorage.getItem('fdc_tienda') === FDC_SLUG) localStorage.removeItem('fdc_tienda'); } catch (e) {}
-                    showToast('No encontramos esa tienda. Te mostramos las tiendas de VentiunGo Congelados.', 'warning');
+                    showToast('No encontramos esa tienda. Te mostramos las tiendas de VentiunGo Tienda.', 'warning');
                     setTimeout(() => { location.href = location.pathname + '?inicio=1'; }, 1600);
                     return;
                 }
                 const d = sn.data() || {}, keep = {};
-                ['nombre', 'descripcion', 'whatsapp', 'whatsapp2', 'ciudad', 'zona', 'minimo', 'pagos', 'logo', 'publico'].forEach(k => { if (d[k] !== undefined && d[k] !== null && d[k] !== '') keep[k] = d[k]; });
+                ['nombre', 'descripcion', 'whatsapp', 'whatsapp2', 'ciudad', 'zona', 'minimo', 'pagos', 'logo', 'publico', 'cobro', 'mpLink', 'mpAlias'].forEach(k => { if (d[k] !== undefined && d[k] !== null && d[k] !== '') keep[k] = d[k]; });
                 if (d.minimo === 0) keep.minimo = 0;
                 FDC_STORE = Object.assign({}, FDC_DEFAULTS[FDC_SLUG === 'flor-del-ceibo' ? 'flor-del-ceibo' : 'nueva'], keep);
                 try { localStorage.setItem(fdcKey('fdc_store'), JSON.stringify(FDC_STORE)); } catch (e) {}
@@ -3950,15 +3964,15 @@ window.VGSubs = (function () {
             const bc = document.getElementById('btn-comercio'); if (bc) bc.classList.toggle('fdc-hide', !plataforma);
             const bi = document.getElementById('btn-info'); if (bi) bi.classList.toggle('fdc-hide', plataforma);
             if (plataforma) {
-                const n = document.getElementById('fdc-brand-name'); if (n) n.textContent = 'Congelados';
+                const n = document.getElementById('fdc-brand-name'); if (n) n.textContent = 'Tienda';
                 const bl = document.getElementById('brand-logo'); if (bl) bl.innerHTML = '<span class="flex items-center justify-center rounded-xl bg-ice-600 text-white" style="width:36px;height:36px"><i class="fa-solid fa-snowflake"></i></span>';
-                document.title = 'VentiunGo Congelados · Tu tienda de congelados online';
+                document.title = 'VentiunGo Tienda · Tu tienda online';
             }
         }
         function fdcGoInfo() { location.href = location.pathname + '?inicio=1'; }
         function fdcOpenStore(slug) { location.href = location.pathname + '?t=' + encodeURIComponent(slug); }
 
-        // ---------- Página de VentiunGo Congelados ----------
+        // ---------- Página de VentiunGo Tienda ----------
         function fdcPlatform(view, sub) {
             ['view-home', 'view-store', 'view-admin'].forEach(id => { const v = document.getElementById(id); if (v) v.classList.add('hidden'); });
             const vp = document.getElementById('view-platform'), va = document.getElementById('view-acceso');
@@ -3981,8 +3995,8 @@ window.VGSubs = (function () {
                     <div class="bg-white rounded-3xl border border-slate-200 shadow-sm p-7 flex flex-col">
                         <p class="text-xs font-bold uppercase tracking-wide text-slate-400">Prueba gratis</p>
                         <p class="mt-1 text-5xl font-extrabold text-slate-900">2 meses</p>
-                        <p class="mt-1 text-sm text-slate-500">para comercios de alimentos congelados</p>
-                        <ul class="mt-6 mb-8 space-y-3">${['Tu tienda online con tu logo', 'Pedidos directos por WhatsApp', 'Productos, ofertas y stock ilimitados', 'Sin tarjeta para empezar'].map(t => li(false, t)).join('')}</ul>
+                        <p class="mt-1 text-sm text-slate-500">para comercios y emprendedores</p>
+                        <ul class="mt-6 mb-8 space-y-3">${['Tu tienda online con tu logo', 'Pedidos por WhatsApp o pagados con Mercado Pago', 'Productos, ofertas y stock ilimitados', 'Sin tarjeta para empezar'].map(t => li(false, t)).join('')}</ul>
                         <button type="button" onclick="fdcPlatform('acceso','crear')" class="mt-auto w-full py-3.5 rounded-2xl bg-ice-900 hover:bg-ice-800 text-white font-bold transition">Empezar gratis</button>
                     </div>
                     <div class="relative bg-white rounded-3xl border-2 border-amber-400 shadow-sm p-7 flex flex-col">
@@ -4007,9 +4021,9 @@ window.VGSubs = (function () {
             vp.innerHTML = `
             <div class="bg-gradient-to-r from-ice-700 via-ice-600 to-ice-900 rounded-3xl p-6 sm:p-10 text-white shadow-xl relative overflow-hidden">
                 <div class="relative z-10 max-w-2xl space-y-4">
-                    <span class="inline-block bg-white/20 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider">❄️ Tiendas de congelados online</span>
-                    <h2 class="text-3xl sm:text-5xl font-extrabold tracking-tight leading-none">VentiunGo<span class="block text-lg sm:text-2xl font-bold text-ice-100 tracking-normal mt-2">Congelados</span></h2>
-                    <p class="text-sm sm:text-base text-ice-100 leading-relaxed">Tu tienda online de alimentos congelados. Cargás tus productos y precios, tus clientes arman el pedido desde el celular y te llega listo por WhatsApp, con el detalle, el total y los datos de envío.</p>
+                    <span class="inline-block bg-white/20 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider">🛍️ Tiendas online</span>
+                    <h2 class="text-3xl sm:text-5xl font-extrabold tracking-tight leading-none">VentiunGo<span class="block text-lg sm:text-2xl font-bold text-ice-100 tracking-normal mt-2">Tienda</span></h2>
+                    <p class="text-sm sm:text-base text-ice-100 leading-relaxed">Tu tienda online en minutos. Cargás tus productos y precios, tus clientes arman el pedido desde el celular y te llega listo por WhatsApp, con el detalle, el total y los datos de envío. Si querés, lo cobrás antes con Mercado Pago.</p>
                     <div class="flex flex-col sm:flex-row gap-3 pt-2">
                         <button onclick="fdcPlatform('acceso','crear')" class="px-6 py-3 bg-white text-ice-700 hover:bg-ice-50 rounded-xl font-extrabold text-sm shadow-lg transition"><i class="fa-solid fa-store mr-2"></i>Crear mi tienda gratis</button>
                         <button onclick="fdcPlatform('acceso','ingresar')" class="px-6 py-3 bg-white/15 hover:bg-white/25 text-white rounded-xl font-bold text-sm transition"><i class="fa-solid fa-right-to-bracket mr-2"></i>Soy comercio: ingresar</button>
@@ -4030,7 +4044,7 @@ window.VGSubs = (function () {
                     ${step(1, 'Creá tu tienda', 'Nombre, WhatsApp, zona de reparto y compra mínima. Listo en un minuto.')}
                     ${step(2, 'Cargá tus productos', 'Categorías, fotos, precios, descuentos y stock, desde el celular.')}
                     ${step(3, 'Compartí tu enlace', 'Mandalo por WhatsApp o ponelo en Instagram: tus clientes entran directo a tu tienda.')}
-                    ${step(4, 'Recibí los pedidos', 'Te llegan por WhatsApp con el detalle, el total y la dirección de entrega.')}
+                    ${step(4, 'Recibí los pedidos', 'Te llegan por WhatsApp con el detalle, el total y la dirección de entrega, y si elegís, ya pagados con Mercado Pago.')}
                 </div>
             </section>
 
@@ -4039,6 +4053,7 @@ window.VGSubs = (function () {
                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                     ${ben('fa-brands fa-whatsapp', 'Pedidos ordenados', 'Cada pedido llega armado: productos, cantidades, total y datos del cliente. Sin errores al anotar.')}
                     ${ben('fa-solid fa-tags', 'Ofertas y descuentos', 'Marcá descuentos por producto y tus clientes ven el precio de lista y el ahorro.')}
+                    ${ben('fa-solid fa-credit-card', 'Cobrá con Mercado Pago', 'Elegí si tus clientes solo mandan el pedido por WhatsApp o si lo pagan antes con tu link de Mercado Pago.')}
                     ${ben('fa-solid fa-basket-shopping', 'Compra mínima', 'Fijá el monto mínimo por pedido y la app no deja enviar pedidos por debajo.')}
                     ${ben('fa-solid fa-boxes-stacked', 'Stock al día', 'Pausá los productos sin stock y vuelven a aparecer cuando los activás.')}
                     ${ben('fa-solid fa-mobile-screen-button', 'App en el celular', 'Tus clientes la instalan en el celular y vuelven a pedir con un toque.')}
@@ -4049,12 +4064,12 @@ window.VGSubs = (function () {
             ${fdcPlansHTML()}
 
             <section id="fdc-tiendas" class="space-y-4 scroll-mt-24">
-                <div><p class="text-ice-600 font-bold text-xs uppercase tracking-widest">Tiendas adheridas</p><h3 class="text-2xl font-extrabold text-slate-900">Ya venden con VentiunGo Congelados</h3></div>
+                <div><p class="text-ice-600 font-bold text-xs uppercase tracking-widest">Tiendas adheridas</p><h3 class="text-2xl font-extrabold text-slate-900">Ya venden con VentiunGo Tienda</h3></div>
                 <div id="fdc-dir" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3"><p class="text-sm text-slate-400">Cargando tiendas…</p></div>
             </section>
 
             <section class="bg-ice-900 text-white rounded-2xl p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div><h3 class="text-xl font-extrabold">¿Tenés un comercio de congelados?</h3><p class="text-sm text-ice-200 mt-1">Creá tu tienda gratis y empezá a recibir pedidos hoy.</p></div>
+                <div><h3 class="text-xl font-extrabold">¿Tenés un comercio?</h3><p class="text-sm text-ice-200 mt-1">Creá tu tienda gratis y empezá a recibir pedidos hoy.</p></div>
                 <button onclick="fdcPlatform('acceso','crear')" class="px-6 py-3 bg-ice-500 hover:bg-ice-400 text-white rounded-xl font-bold text-sm shadow-lg">Crear mi tienda</button>
             </section>`;
             fdcLoadDir();
@@ -4111,7 +4126,7 @@ window.VGSubs = (function () {
                 <form id="fdc-f-crear" class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 space-y-3" novalidate>
                     <h3 class="font-extrabold text-slate-900 text-lg">Creá tu tienda</h3>
                     <p class="text-xs text-slate-500">Tenés 2 meses gratis para probarla. No hace falta tarjeta.</p>
-                    <div><label class="${lbl}" for="fdc-c-n">NOMBRE DE TU TIENDA</label><input id="fdc-c-n" class="${inp}" maxlength="60" placeholder="Ej: Congelados Don José"></div>
+                    <div><label class="${lbl}" for="fdc-c-n">NOMBRE DE TU TIENDA</label><input id="fdc-c-n" class="${inp}" maxlength="60" placeholder="Ej: Almacén Don José"></div>
                     <div class="grid sm:grid-cols-2 gap-3">
                         <div><label class="${lbl}" for="fdc-c-w">WHATSAPP PARA PEDIDOS</label><input id="fdc-c-w" type="tel" inputmode="tel" class="${inp}" placeholder="341 555 1234"></div>
                         <div><label class="${lbl}" for="fdc-c-c">CIUDAD</label><input id="fdc-c-c" class="${inp}" maxlength="40" placeholder="Ej: Rosario"></div>
@@ -4199,7 +4214,7 @@ window.VGSubs = (function () {
         }
         function fdcForgotComercio() {
             const n = (document.getElementById('fdc-l-n') || {}).value || '';
-            window.open('https://wa.me/' + FDC_WA_SUPPORT + '?text=' + encodeURIComponent('Hola VentiunGo, olvidé la contraseña de mi tienda de VentiunGo Congelados' + (n ? ' (' + n.trim() + ')' : '') + '. ¿Me ayudan a cambiarla?'), '_blank');
+            window.open('https://wa.me/' + FDC_WA_SUPPORT + '?text=' + encodeURIComponent('Hola VentiunGo, olvidé la contraseña de mi tienda de VentiunGo Tienda' + (n ? ' (' + n.trim() + ')' : '') + '. ¿Me ayudan a cambiarla?'), '_blank');
         }
 
         // ---------- Panel: datos de la tienda y enlace para compartir ----------
@@ -4213,17 +4228,39 @@ window.VGSubs = (function () {
                     <div class="min-w-0">
                         <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Tu tienda</p>
                         <p class="font-extrabold text-slate-900 text-lg truncate">${fdcEsc(s.nombre || FDC_TIENDA)}</p>
-                        <p class="text-xs text-slate-500 truncate">${fdcEsc([s.zona, fdcMin() ? 'Mínimo ' + fdcMoney(fdcMin()) : 'Sin mínimo', fdcWaShow(fdcWaNorm(s.whatsapp))].filter(Boolean).join(' · '))}</p>
+                        <p class="text-xs text-slate-500 truncate">${fdcEsc([s.zona, fdcMin() ? 'Mínimo ' + fdcMoney(fdcMin()) : 'Sin mínimo', fdcCobroLabel(), fdcWaShow(fdcWaNorm(s.whatsapp))].filter(Boolean).join(' · '))}</p>
                         <p class="text-xs text-ice-600 font-semibold break-all mt-0.5 select-all">${fdcEsc(link)}</p>
                     </div>
                 </div>
                 <div class="flex flex-wrap gap-2">
                     <button type="button" onclick="fdcCopyLink()" class="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold"><i class="fa-regular fa-copy mr-1"></i>Copiar enlace</button>
-                    <a href="https://api.whatsapp.com/send?text=${encodeURIComponent('Hacé tu pedido de congelados en ' + (s.nombre || '') + ': ' + link)}" target="_blank" rel="noopener" class="px-4 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-xs font-bold"><i class="fa-brands fa-whatsapp mr-1"></i>Compartir</a>
+                    <a href="https://api.whatsapp.com/send?text=${encodeURIComponent('Hacé tu pedido en ' + (s.nombre || '') + ': ' + link)}" target="_blank" rel="noopener" class="px-4 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-xs font-bold"><i class="fa-brands fa-whatsapp mr-1"></i>Compartir</a>
                     <button type="button" onclick="fdcEditStore()" class="px-4 py-2.5 bg-ice-600 hover:bg-ice-700 text-white rounded-xl text-xs font-bold"><i class="fa-solid fa-pen mr-1"></i>Datos de la tienda</button>
                 </div>
             </div>`;
         }
+        // Cobro con Mercado Pago: el link de cobro de la tienda (como los links de pago de los planes)
+        function fdcMpLinkOk(u) { return /^https:\/\/([a-z0-9-]+\.)*(mercadopago\.com(\.ar)?|mpago\.la|mpago\.li)(\/|$)/i.test(String(u || '').trim()); }
+        function fdcMpOn() { const c = FDC_STORE.cobro || 'whatsapp'; return c !== 'whatsapp' && fdcMpLinkOk(FDC_STORE.mpLink); }
+        function fdcWaOn() { return !fdcMpOn() || (FDC_STORE.cobro || 'whatsapp') !== 'mp'; }
+        function fdcCobroLabel() { return fdcMpOn() ? (fdcWaOn() ? 'WhatsApp o Mercado Pago' : 'Pago con Mercado Pago') : (FDC_STORE.cobro && FDC_STORE.cobro !== 'whatsapp' ? 'Falta el link de Mercado Pago' : 'Pedidos por WhatsApp'); }
+        function fdcPayStep(pagaMP, total) {
+            const box = document.getElementById('fdc-mp-box'), step = document.getElementById('fdc-wa-step'), bt = document.getElementById('fdc-wa-btn-txt');
+            if (!box) return;
+            box.classList.toggle('hidden', !pagaMP);
+            if (bt) bt.textContent = pagaMP ? 'Ya pagué: enviar pedido por WhatsApp' : 'Abrir WhatsApp y enviar';
+            if (step) step.innerHTML = pagaMP ? '<b>2.</b> Cuando termines de pagar, enviá el pedido por WhatsApp y adjuntá el comprobante.' : 'Tu pedido quedó guardado. Tocá el botón para abrir WhatsApp con el mensaje listo y enviarlo.';
+            if (!pagaMP) return;
+            const monto = '$' + (Number(total) || 0).toLocaleString('es-AR');
+            box.innerHTML = `<p class="text-xs font-bold text-sky-800"><b>1.</b> Pagá tu pedido con Mercado Pago</p>
+                <div class="flex items-center justify-between gap-2 bg-white rounded-lg px-3 py-2 border border-sky-100"><span class="text-xs text-slate-500">Total a pagar</span><span class="text-xl font-extrabold text-slate-900">${monto}</span></div>
+                <a href="${fdcEsc(FDC_STORE.mpLink)}" target="_blank" rel="noopener" onclick="fdcMpOpened()" class="w-full py-3 bg-sky-500 hover:bg-sky-600 text-white rounded-xl font-bold text-sm flex items-center justify-center gap-2"><i class="fa-solid fa-credit-card"></i><span>Pagar ${monto} con Mercado Pago</span></a>
+                <p class="text-[11px] text-slate-500">Tarjeta de crédito, débito o dinero en cuenta. Si el link te pide el monto, escribí <b>${monto}</b>.</p>
+                ${FDC_STORE.mpAlias ? `<p class="text-[11px] text-slate-500">También podés transferir al alias <b class="select-all text-slate-700">${fdcEsc(FDC_STORE.mpAlias)}</b>.</p>` : ''}
+                <p id="fdc-mp-msg" class="text-[11px] font-semibold text-emerald-700 min-h-[1em]"></p>`;
+        }
+        function fdcMpOpened() { const m = document.getElementById('fdc-mp-msg'); if (m) m.textContent = 'Cuando termines de pagar, tocá "Ya pagué" para enviar el pedido por WhatsApp.'; }
+
         function fdcCopyLink() {
             const link = fdcStoreLink();
             const ok = () => showToast('Enlace copiado. Compartilo con tus clientes 📋', 'success');
@@ -4268,7 +4305,16 @@ window.VGSubs = (function () {
                 </div>
                 <div><label class="${lbl}">ZONA DE REPARTO</label><input id="fdc-e-z" class="${inp}" maxlength="80" value="${fdcEsc(s.zona)}"></div>
                 <div><label class="${lbl}">MEDIOS DE PAGO</label><input id="fdc-e-p" class="${inp}" maxlength="80" value="${fdcEsc(s.pagos)}"></div>
-                <label class="flex items-center gap-2 text-sm text-slate-600"><input id="fdc-e-pub" type="checkbox" ${s.publico === false ? '' : 'checked'} class="accent-red-600"> Mostrar mi tienda en el listado de VentiunGo Congelados</label>
+                <div class="p-3 rounded-xl border border-slate-200 space-y-2">
+                    <p class="text-xs font-bold text-slate-500">CÓMO RECIBÍS LOS PEDIDOS</p>
+                    ${[['whatsapp', 'Solo por WhatsApp', 'El cliente manda el pedido y coordinan el pago.'], ['ambos', 'WhatsApp o pago con Mercado Pago', 'El cliente elige: pagar antes con Mercado Pago o mandar el pedido directo.'], ['mp', 'Solo con pago por Mercado Pago', 'El cliente paga con Mercado Pago y después manda el pedido con el comprobante.']].map(o => `<label class="flex items-start gap-2 text-sm text-slate-700 cursor-pointer"><input type="radio" name="fdc-e-cobro" value="${o[0]}" ${(s.cobro || 'whatsapp') === o[0] ? 'checked' : ''} class="mt-1 accent-red-600"><span><b>${o[1]}</b><span class="block text-xs text-slate-500">${o[2]}</span></span></label>`).join('')}
+                    <div id="fdc-e-mpbox" class="space-y-2 pt-1">
+                        <div><label class="${lbl}">TU LINK DE COBRO DE MERCADO PAGO</label><input id="fdc-e-mpl" type="url" class="${inp}" placeholder="https://link.mercadopago.com.ar/tu-negocio" value="${fdcEsc(s.mpLink)}">
+                        <p class="text-[11px] text-slate-400 mt-1">En la app de Mercado Pago: <b>Cobrar → Link de pago</b> (con monto libre) o tu link <b>link.mercadopago.com.ar/…</b>. El cliente ve el total del pedido y paga en ese link.</p></div>
+                        <div><label class="${lbl}">ALIAS DE MERCADO PAGO (opcional)</label><input id="fdc-e-mpa" class="${inp}" maxlength="60" placeholder="tu.alias.mp" value="${fdcEsc(s.mpAlias)}"></div>
+                    </div>
+                </div>
+                <label class="flex items-center gap-2 text-sm text-slate-600"><input id="fdc-e-pub" type="checkbox" ${s.publico === false ? '' : 'checked'} class="accent-red-600"> Mostrar mi tienda en el listado de VentiunGo Tienda</label>
                 <p id="fdc-e-err" class="text-xs font-semibold text-red-600 min-h-[1em]"></p>
                 <div class="flex flex-col sm:flex-row gap-2"><button type="submit" class="flex-1 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg font-bold text-sm">Guardar</button><button type="button" data-x class="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 rounded-lg font-bold text-sm text-slate-600">Cancelar</button></div>
             </form>`;
@@ -4283,9 +4329,10 @@ window.VGSubs = (function () {
             m.querySelector('form').addEventListener('submit', async ev => {
                 ev.preventDefault();
                 const g = id => $(id).value.trim();
-                const data = { nombre: g('fdc-e-n'), descripcion: g('fdc-e-d'), whatsapp: fdcWaNorm(g('fdc-e-w')), whatsapp2: fdcWaNorm(g('fdc-e-w2')), ciudad: g('fdc-e-c'), zona: g('fdc-e-z'), minimo: Math.max(0, Math.round(Number(g('fdc-e-m')) || 0)), pagos: g('fdc-e-p'), logo: logo || '', publico: $('fdc-e-pub').checked };
+                const data = { nombre: g('fdc-e-n'), descripcion: g('fdc-e-d'), whatsapp: fdcWaNorm(g('fdc-e-w')), whatsapp2: fdcWaNorm(g('fdc-e-w2')), ciudad: g('fdc-e-c'), zona: g('fdc-e-z'), minimo: Math.max(0, Math.round(Number(g('fdc-e-m')) || 0)), pagos: g('fdc-e-p'), logo: logo || '', publico: $('fdc-e-pub').checked, cobro: (m.querySelector('input[name=fdc-e-cobro]:checked') || {}).value || 'whatsapp', mpLink: g('fdc-e-mpl'), mpAlias: g('fdc-e-mpa') };
                 if (data.nombre.length < 3) return $('fdc-e-err').textContent = 'Escribí el nombre de la tienda.';
                 if (data.whatsapp.length < 10) return $('fdc-e-err').textContent = 'Escribí el WhatsApp con código de área.';
+                if (data.cobro !== 'whatsapp' && !fdcMpLinkOk(data.mpLink)) return $('fdc-e-err').textContent = 'Pegá tu link de cobro de Mercado Pago (empieza con https:// y es de mercadopago o mpago.la).';
                 try {
                     await FDB.collection('tiendas').doc(FDC_TIENDA).update(data);
                     m.remove(); showToast('Datos de la tienda guardados ✅', 'success');
