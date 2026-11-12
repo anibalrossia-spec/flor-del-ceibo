@@ -4058,7 +4058,6 @@ window.VGSubs = (function () {
                     <div class="flex flex-col sm:flex-row gap-3 pt-2">
                         <button onclick="fdcPlatform('acceso','crear')" class="px-6 py-3 bg-white text-ice-700 hover:bg-ice-50 rounded-xl font-extrabold text-sm shadow-lg transition"><i class="fa-solid fa-store mr-2"></i>Crear mi tienda gratis</button>
                         <button onclick="fdcPlatform('acceso','ingresar')" class="px-6 py-3 bg-white/15 hover:bg-white/25 text-white rounded-xl font-bold text-sm transition"><i class="fa-solid fa-right-to-bracket mr-2"></i>Soy comercio: ingresar</button>
-                        <a href="#fdc-tiendas" class="px-6 py-3 text-white/90 hover:text-white rounded-xl font-bold text-sm text-center underline underline-offset-4">Ver tiendas</a>
                     </div>
                     <div class="grid grid-cols-3 gap-3 pt-3 text-center">
                         <div class="bg-white/10 rounded-xl p-3"><p class="font-black text-lg">2 meses</p><p class="text-[11px] text-ice-100">gratis para probar</p></div>
@@ -4094,16 +4093,11 @@ window.VGSubs = (function () {
 
             ${fdcPlansHTML()}
 
-            <section id="fdc-tiendas" class="space-y-4 scroll-mt-24">
-                <div><p class="text-ice-600 font-bold text-xs uppercase tracking-widest">Tiendas adheridas</p><h3 class="text-2xl font-extrabold text-slate-900">Ya venden con VentiunGo Tienda</h3></div>
-                <div id="fdc-dir" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3"><p class="text-sm text-slate-400">Cargando tiendas…</p></div>
-            </section>
 
             <section class="bg-ice-900 text-white rounded-2xl p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div><h3 class="text-xl font-extrabold">¿Tenés un comercio?</h3><p class="text-sm text-ice-200 mt-1">Creá tu tienda gratis y empezá a recibir pedidos hoy.</p></div>
                 <button onclick="fdcPlatform('acceso','crear')" class="px-6 py-3 bg-ice-500 hover:bg-ice-400 text-white rounded-xl font-bold text-sm shadow-lg">Crear mi tienda</button>
             </section>`;
-            fdcLoadDir();
         }
         async function fdcLoadDir() {
             const box = document.getElementById('fdc-dir'); if (!box) return;
@@ -4348,7 +4342,8 @@ window.VGSubs = (function () {
                         <div><label class="${lbl}">ALIAS DE MERCADO PAGO (opcional)</label><input id="fdc-e-mpa" class="${inp}" maxlength="60" placeholder="tu.alias.mp" value="${fdcEsc(s.mpAlias)}"></div>
                     </div>
                 </div>
-                <label class="flex items-center gap-2 text-sm text-slate-600"><input id="fdc-e-pub" type="checkbox" ${s.publico === false ? '' : 'checked'} class="accent-red-600"> Mostrar mi tienda en el listado de VentiunGo Tienda</label>
+                <label class="fdc-hide"><input id="fdc-e-pub" type="checkbox" ${s.publico === false ? '' : 'checked'}></label>
+                <p class="text-[11px] text-slate-400">Tu tienda no aparece en ningún listado: tus clientes entran solo con el enlace que les compartís.</p>
                 <p id="fdc-e-err" class="text-xs font-semibold text-red-600 min-h-[1em]"></p>
                 <div class="flex flex-col sm:flex-row gap-2"><button type="submit" class="flex-1 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg font-bold text-sm">Guardar</button><button type="button" data-x class="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 rounded-lg font-bold text-sm text-slate-600">Cancelar</button></div>
             </form>`;
