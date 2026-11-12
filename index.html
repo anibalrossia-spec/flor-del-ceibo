@@ -4172,6 +4172,25 @@ window.VGSubs = (function () {
             const fl = document.getElementById('fdc-f-login'); if (fl) fl.addEventListener('submit', fdcLoginComercio);
             const fc = document.getElementById('fdc-f-crear'); if (fc) fc.addEventListener('submit', fdcCrearTienda);
         }
+        // Soporte: lista de todas las tiendas para entrar a administrar (cambiar clave, suscripción, etc.)
+        async function fdcSoporteTiendas() {
+            const va = document.getElementById('view-acceso');
+            va.innerHTML = '<div class="max-w-xl mx-auto space-y-4"><p class="text-ice-600 font-bold text-xs uppercase tracking-widest">Soporte VentiunGo</p><h2 class="text-3xl font-extrabold text-slate-900">Elegí la tienda</h2><div id="fdc-sop-list" class="space-y-2"><p class="text-sm text-slate-400">Cargando tiendas…</p></div></div>';
+            try {
+                const q = await FDB.collection('tiendas').get(), list = [];
+                q.forEach(d => { const x = d.data() || {}; list.push({ id: d.id, nombre: x.nombre || (FDC_DEFAULTS[d.id] || {}).nombre || d.id, zona: x.zona || (FDC_DEFAULTS[d.id] || {}).zona || '', logo: x.logo || '' }); });
+                list.sort((a, b) => a.nombre.localeCompare(b.nombre));
+                document.getElementById('fdc-sop-list').innerHTML = list.map(t => `<button type="button" onclick="fdcSoporteEntrar('${fdcEsc(t.id)}')" class="w-full text-left bg-white rounded-2xl border border-slate-200 shadow-sm p-4 flex items-center gap-3 hover:border-ice-400">${fdcLogoHTML(t, t.id, 44)}<span class="min-w-0"><span class="block font-extrabold text-slate-900 truncate">${fdcEsc(t.nombre)}</span><span class="block text-xs text-slate-500 truncate">${fdcEsc(t.zona)}</span></span></button>`).join('') || '<p class="text-sm text-slate-400">No hay tiendas todavía.</p>';
+            } catch (e) { document.getElementById('fdc-sop-list').innerHTML = '<p class="text-sm text-red-600">No se pudo cargar la lista de tiendas.</p>'; }
+        }
+        function fdcSoporteEntrar(slug) {
+            const k = slug === 'flor-del-ceibo' ? '' : '__' + slug;
+            try {
+                localStorage.setItem('redpro_current_user' + k, JSON.stringify({ name: 'Soporte VentiunGo', email: 'soporte@ventiungo.app', role: 'admin', soporte: true }));
+                localStorage.setItem('fdc_tab' + k, 'admin');
+            } catch (e) {}
+            location.href = location.pathname + '?t=' + encodeURIComponent(slug);
+        }
         function fdcEnterAdmin(slug, nombre, email) {
             const k = slug === 'flor-del-ceibo' ? '' : '__' + slug;
             try {
@@ -4189,6 +4208,13 @@ window.VGSubs = (function () {
             err.textContent = '';
             if (!nombre || !pass) { err.textContent = 'Escribí el nombre de tu tienda y la contraseña.'; return; }
             if (!FDB || !FAUTH) { err.textContent = 'No hay conexión con la base de datos. Probá de nuevo.'; return; }
+            // Soporte de VentiunGo: entra y elige qué tienda administrar
+            if (fdcSlug(nombre) === 'ventiungo') {
+                btn.disabled = true; btn.textContent = 'Entrando…';
+                try { await cloudSupportLogin(pass); }
+                catch (x) { btn.disabled = false; btn.textContent = 'Ingresar'; err.textContent = x && x.message === 'clave' ? 'La contraseña de soporte no es correcta.' : 'No se pudo conectar. Probá de nuevo.'; return; }
+                return fdcSoporteTiendas();
+            }
             // Usuarios cortos de algunas tiendas (ej.: "flor" = Flor del Ceibo)
             const FDC_ALIAS = { flor: 'flor-del-ceibo', admin: 'flor-del-ceibo' };
             const slug = FDC_ALIAS[fdcSlug(nombre)] || fdcSlug(nombre);
