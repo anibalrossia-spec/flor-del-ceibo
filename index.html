@@ -22,15 +22,15 @@
     </script>
     <script>
     // ===== VentiunGo Tienda: varias tiendas =====
-    // ?t=nombre-de-la-tienda abre esa tienda. Sin parámetro: la última tienda abierta en este celular
-    // (los clientes de siempre siguen entrando a Flor del Ceibo); si nunca abrió una, la página de VentiunGo Tienda.
+    // Página principal: VentiunGo Tienda. Cada tienda se abre con ?t=nombre-de-la-tienda
+    // (desde el listado de tiendas, el enlace que comparte el comercio o al ingresar a la cuenta).
     (function () {
         var ls = function (k) { try { return localStorage.getItem(k) || ''; } catch (e) { return ''; } };
         var p = null; try { p = new URLSearchParams(location.search); } catch (e) {}
         var q = p ? (p.get('t') || '').toLowerCase().replace(/[^a-z0-9-]/g, '').slice(0, 60) : '';
         var inicio = p ? p.has('inicio') : false;
         var legacy = !!(ls("redpro_current_user") || ls("redpro_cart") || ls("redpro_orders") || ls("redpro_accounts") || ls("fdc_tab"));
-        var slug = q || (inicio ? '' : (ls('fdc_tienda') || (legacy ? 'flor-del-ceibo' : '')));
+        var slug = q;
         window.FDC_SLUG = slug;
         window.fdcKey = function (k) { return (!window.FDC_SLUG || window.FDC_SLUG === 'flor-del-ceibo') ? k : k + '__' + window.FDC_SLUG; };
         window.FDC_DEFAULTS = {
@@ -190,8 +190,14 @@
                     <button id="btn-comercio" onclick="fdcPlatform('acceso','ingresar')" class="fdc-hide px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 bg-white text-ice-800 hover:bg-ice-50">
                         <i class="fa-solid fa-store text-xs"></i><span>Soy comercio</span>
                     </button>
-                    <button id="btn-info" onclick="fdcGoInfo()" class="p-2 text-ice-100 hover:text-white hover:bg-ice-800 rounded-lg" title="VentiunGo Tienda: información del servicio" aria-label="Información del servicio">
-                        <i class="fa-solid fa-circle-info text-base"></i>
+                    <button id="btn-mitienda" onclick="fdcMiTienda()" class="fdc-hide px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 bg-white text-ice-800 hover:bg-ice-50">
+                        <i class="fa-solid fa-store text-xs"></i><span>Mi tienda</span>
+                    </button>
+                    <button id="btn-info" onclick="fdcGoInfo()" class="p-2 text-ice-100 hover:text-white hover:bg-ice-800 rounded-lg flex items-center gap-1" title="Inicio: VentiunGo Tienda" aria-label="Inicio">
+                        <i class="fa-solid fa-house text-base"></i><span class="hidden sm:inline text-xs font-semibold">Inicio</span>
+                    </button>
+                    <button id="btn-logout" onclick="fdcLogout()" class="fdc-hide p-2 text-ice-100 hover:text-white hover:bg-ice-800 rounded-lg flex items-center gap-1" title="Cerrar sesión" aria-label="Cerrar sesión">
+                        <i class="fa-solid fa-right-from-bracket text-base"></i><span class="hidden sm:inline text-xs font-semibold">Salir</span>
                     </button>
                     <!-- Actualizar la app sin cerrar la sesión -->
                     <button type="button" onclick="actualizarApp()" class="p-2 text-ice-100 hover:text-white hover:bg-ice-800 rounded-lg" title="Actualizar la app" aria-label="Actualizar la app">
@@ -2402,6 +2408,7 @@
         }
 
         function updateClientBanner() {
+            try { fdcSyncLogout(); } catch (e) {}
             try { const br = document.getElementById('btn-reset-admin'); if (br) br.style.display = (currentUser && currentUser.soporte) ? '' : 'none'; } catch (e) {}
             try {
                 const bs = document.getElementById('btn-sub-admin'); if (bs) bs.style.display = (currentUser && currentUser.soporte) ? '' : 'none';
@@ -3679,6 +3686,7 @@ window.VGSubs = (function () {
 
             FAUTH.onAuthStateChanged(u => {
                 setTimeout(fdcSubsHook, 0);
+                setTimeout(() => { try { fdcSyncLogout(); } catch (e) {} }, 0);
                 if (!u && currentUser && currentUser.role === 'admin') {
                     currentUser = null; saveUserSession(); updateClientBanner(); switchTab('home');
                 }
@@ -3937,7 +3945,7 @@ window.VGSubs = (function () {
                     if (FDC_SLUG === 'flor-del-ceibo') return;
                     try { if (localStorage.getItem('fdc_tienda') === FDC_SLUG) localStorage.removeItem('fdc_tienda'); } catch (e) {}
                     showToast('No encontramos esa tienda. Te mostramos las tiendas de VentiunGo Tienda.', 'warning');
-                    setTimeout(() => { location.href = location.pathname + '?inicio=1'; }, 1600);
+                    setTimeout(() => { location.href = location.pathname; }, 1600);
                     return;
                 }
                 const d = sn.data() || {}, keep = {};
@@ -3963,13 +3971,36 @@ window.VGSubs = (function () {
             const ba = document.getElementById('btn-tab-admin'); if (ba && plataforma) ba.style.display = 'none';
             const bc = document.getElementById('btn-comercio'); if (bc) bc.classList.toggle('fdc-hide', !plataforma);
             const bi = document.getElementById('btn-info'); if (bi) bi.classList.toggle('fdc-hide', plataforma);
+            fdcSyncLogout();
             if (plataforma) {
                 const n = document.getElementById('fdc-brand-name'); if (n) n.textContent = 'Tienda';
                 const bl = document.getElementById('brand-logo'); if (bl) bl.innerHTML = '<span class="flex items-center justify-center rounded-xl bg-ice-600 text-white" style="width:36px;height:36px"><i class="fa-solid fa-snowflake"></i></span>';
                 document.title = 'VentiunGo Tienda · Tu tienda online';
             }
         }
-        function fdcGoInfo() { location.href = location.pathname + '?inicio=1'; }
+        // ¿Hay una sesión abierta? En la página principal: la del comercio; en una tienda: comercio o cliente
+        function fdcAdminTienda() { try { return localStorage.getItem('fdc_admin_tienda') || ''; } catch (e) { return ''; } }
+        function fdcSyncLogout() {
+            if (FDC_SLUG && currentUser && currentUser.role === 'admin' && !currentUser.soporte && FAUTH && FAUTH.currentUser) { try { localStorage.setItem('fdc_admin_tienda', FDC_SLUG); } catch (e) {} }
+            const comercio = !!(FAUTH && FAUTH.currentUser && !FAUTH.currentUser.isAnonymous && fdcAdminTienda());
+            const logged = FDC_SLUG ? !!currentUser : comercio;
+            const bl = document.getElementById('btn-logout'); if (bl) bl.classList.toggle('fdc-hide', !logged);
+            const mt = document.getElementById('btn-mitienda'); if (mt) mt.classList.toggle('fdc-hide', !!FDC_SLUG || !comercio);
+            const bc = document.getElementById('btn-comercio'); if (bc) bc.classList.toggle('fdc-hide', !!FDC_SLUG || comercio);
+        }
+        function fdcMiTienda() { const s = fdcAdminTienda(); if (s) fdcEnterAdmin(s, '', ''); }
+        function fdcLogout() {
+            if (FDC_SLUG) { const adm = currentUser && currentUser.role === 'admin'; logoutUser(); if (adm) { try { localStorage.removeItem('fdc_admin_tienda'); } catch (e) {} } fdcSyncLogout(); return; }
+            try { if (FAUTH) FAUTH.signOut(); } catch (e) {}
+            try {
+                Object.keys(localStorage).filter(k => k.indexOf('redpro_current_user') === 0).forEach(k => { try { const u = JSON.parse(localStorage.getItem(k)); if (u && u.role === 'admin') localStorage.removeItem(k); } catch (e) {} });
+                localStorage.removeItem('fdc_admin_tienda');
+            } catch (e) {}
+            if (window.VGSubs && VGSubs.current()) VGSubs.stop();
+            setTimeout(fdcSyncLogout, 100);
+            showToast('Cerraste la sesión', 'info');
+        }
+        function fdcGoInfo() { location.href = location.pathname; }
         function fdcOpenStore(slug) { location.href = location.pathname + '?t=' + encodeURIComponent(slug); }
 
         // ---------- Página de VentiunGo Tienda ----------
@@ -4153,6 +4184,7 @@ window.VGSubs = (function () {
                 localStorage.setItem('redpro_current_user' + k, JSON.stringify({ name: 'Administrador ' + (nombre || ''), email: email || '', role: 'admin' }));
                 localStorage.setItem('fdc_tab' + k, 'admin');
                 localStorage.setItem('fdc_tienda', slug);
+                localStorage.setItem('fdc_admin_tienda', slug);
             } catch (e) {}
             location.href = location.pathname + '?t=' + encodeURIComponent(slug);
         }
