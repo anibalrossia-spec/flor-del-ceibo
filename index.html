@@ -386,9 +386,11 @@
             </div>
 
             <!-- VentiunGo Tienda -->
-            <button type="button" onclick="fdcGoInfo()" class="w-full text-center text-xs text-slate-500 hover:text-ice-600 py-2">
-                ¿Tenés un comercio? <strong class="text-ice-600">Creá tu tienda online en VentiunGo Tienda</strong>
-            </button>
+            <section class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+                <h3 class="text-xl font-extrabold text-slate-900">¿Tenés un comercio?</h3>
+                <p class="text-sm text-slate-500 mt-2">Creá la cuenta de tu tienda o iniciá sesión para vender online y recibir pedidos por WhatsApp.</p>
+                <button type="button" onclick="location.href = location.pathname + '#crear'" class="mt-5 w-full py-3.5 rounded-xl bg-ice-600 hover:bg-ice-500 text-white font-bold transition">Crear cuenta o iniciar sesión</button>
+            </section>
         </div>
 
         <!-- ========================================== -->
@@ -3984,7 +3986,7 @@ window.VGSubs = (function () {
 
         // ---------- Arranque ----------
         function fdcBoot() {
-            if (!FDC_SLUG) { fdcPlatform('inicio'); return; }
+            if (!FDC_SLUG) { fdcPlatform(location.hash === '#crear' ? 'acceso' : 'inicio', 'crear'); return; }
             try { localStorage.setItem('fdc_tienda', FDC_SLUG); } catch (e) {}
             fdcApplyStore();
             fdcWatchStore();
