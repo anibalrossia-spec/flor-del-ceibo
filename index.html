@@ -31,6 +31,11 @@
         var inicio = p ? p.has('inicio') : false;
         var legacy = !!(ls("redpro_current_user") || ls("redpro_cart") || ls("redpro_orders") || ls("redpro_accounts") || ls("fdc_tab"));
         var slug = q;
+        // App instalada desde una tienda: al abrirla entra directo a esa tienda
+        if (!slug && !inicio) {
+            var standalone = false; try { standalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true; } catch (e) {}
+            if (standalone && ls('fdc_app_tienda')) slug = ls('fdc_app_tienda').toLowerCase().replace(/[^a-z0-9-]/g, '');
+        }
         window.FDC_SLUG = slug;
         window.fdcKey = function (k) { return (!window.FDC_SLUG || window.FDC_SLUG === 'flor-del-ceibo') ? k : k + '__' + window.FDC_SLUG; };
         window.FDC_DEFAULTS = {
@@ -272,7 +277,7 @@
                         </a>
                     </div>
                 </div>
-                <i class="fa-solid fa-snowflake text-white/10 text-9xl absolute -right-6 -bottom-8 pointer-events-none"></i>
+                <i data-fdc="deco" class="fa-solid fa-snowflake text-white/10 text-9xl absolute -right-6 -bottom-8 pointer-events-none"></i>
             </div>
 
             <!-- Doble ingreso de la tienda: cliente y comercio -->
@@ -3247,6 +3252,7 @@
             deferredInstallPrompt = e;
         });
         window.addEventListener('appinstalled', () => {
+            try { if (window.FDC_SLUG) localStorage.setItem('fdc_app_tienda', FDC_SLUG); } catch (e) {}
             deferredInstallPrompt = null;
             closeInstallModal();
             showToast("¡App instalada! Ya la tenés en tu pantalla de inicio 🎉", "success");
@@ -3273,6 +3279,7 @@
                 showToast("La app ya está instalada en este dispositivo ✅", "success");
                 return;
             }
+            try { if (FDC_SLUG) localStorage.setItem('fdc_app_tienda', FDC_SLUG); else localStorage.removeItem('fdc_app_tienda'); } catch (e) {}
             // Si el navegador permite instalar directo, se abre su ventana de instalación
             if (deferredInstallPrompt) {
                 try {
@@ -3915,7 +3922,7 @@ window.VGSubs = (function () {
             size = size || 48;
             if (d && d.logo) return `<img src="${fdcEsc(d.logo)}" alt="" style="width:${size}px;height:${size}px" class="rounded-xl object-cover border border-slate-200 bg-white flex-shrink-0">`;
             if (id === 'flor-del-ceibo' && FDC_CEIBO_LOGO) return `<span class="inline-block flex-shrink-0" style="width:${size}px;height:${size}px">${FDC_CEIBO_LOGO.replace(/width="36" height="36"/, `width="${size}" height="${size}"`)}</span>`;
-            return `<span class="rounded-xl bg-ice-600 text-white flex items-center justify-center flex-shrink-0" style="width:${size}px;height:${size}px"><i class="fa-solid fa-snowflake"></i></span>`;
+            return `<span class="rounded-xl bg-ice-600 text-white flex items-center justify-center flex-shrink-0" style="width:${size}px;height:${size}px"><i class="fa-solid fa-store"></i></span>`;
         }
 
         // ---------- Datos de la tienda abierta ----------
@@ -3946,9 +3953,11 @@ window.VGSubs = (function () {
             const pn = document.getElementById('fdc-pay-note'); if (pn) pn.textContent = mpOn && !waOn ? 'Pagás con Mercado Pago y el pedido se envía al WhatsApp' : mpOn ? 'Podés pagarlo con Mercado Pago o enviarlo directo al WhatsApp' : 'El pedido se enviará al WhatsApp';
             const bl = document.getElementById('brand-logo');
             if (bl && !fdc) {
-                bl.innerHTML = s.logo ? `<img src="${fdcEsc(s.logo)}" alt="" style="width:36px;height:36px" class="block rounded-xl object-cover bg-white">` : '<span class="flex items-center justify-center rounded-xl bg-ice-600 text-white" style="width:36px;height:36px"><i class="fa-solid fa-snowflake"></i></span>';
-                try { if (s.logo) document.getElementById('favicon').href = s.logo; } catch (e) {}
+                bl.innerHTML = s.logo ? `<img src="${fdcEsc(s.logo)}" alt="" style="width:36px;height:36px" class="block rounded-xl object-cover bg-white">` : '<span class="flex items-center justify-center rounded-xl bg-ice-600 text-white" style="width:36px;height:36px"><i class="fa-solid fa-store"></i></span>';
+                try { document.getElementById('favicon').href = s.logo || 'tienda-192.png'; document.getElementById('apple-icon').href = s.logo ? s.logo : 'tienda-180.png'; } catch (e) {}
             }
+            set('[data-fdc="deco"]', el => { el.classList.toggle('fa-snowflake', fdc); el.classList.toggle('fa-store', !fdc); });
+            fdcAppManifest();
             const hl = document.getElementById('fdc-hero-logo');
             if (hl) { hl.innerHTML = !fdc && s.logo ? `<img src="${fdcEsc(s.logo)}" alt="Logo de ${fdcEsc(nombre)}" class="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl object-cover border-2 border-white/40 bg-white shadow-lg">` : ''; }
             fdcRenderStoreCard();
@@ -3997,8 +4006,9 @@ window.VGSubs = (function () {
             fdcSyncLogout();
             if (plataforma) {
                 const n = document.getElementById('fdc-brand-name'); if (n) n.textContent = 'Tienda';
-                const bl = document.getElementById('brand-logo'); if (bl) bl.innerHTML = '<span class="flex items-center justify-center rounded-xl bg-ice-600 text-white" style="width:36px;height:36px"><i class="fa-solid fa-snowflake"></i></span>';
+                const bl = document.getElementById('brand-logo'); if (bl) bl.innerHTML = '<span class="flex items-center justify-center rounded-xl bg-ice-600 text-white" style="width:36px;height:36px"><i class="fa-solid fa-store"></i></span>';
                 document.title = 'VentiunGo Tienda · Tu tienda online';
+                try { document.getElementById('favicon').href = 'tienda-192.png'; document.getElementById('apple-icon').href = 'tienda-180.png'; } catch (e) {}
             }
         }
         // ¿Hay una sesión abierta? En la página principal: la del comercio; en una tienda: comercio o cliente
@@ -4089,7 +4099,7 @@ window.VGSubs = (function () {
                         <div class="bg-white/10 rounded-xl p-3"><p class="font-black text-lg">Tu logo</p><p class="text-[11px] text-ice-100">y tus precios</p></div>
                     </div>
                 </div>
-                <i class="fa-solid fa-snowflake text-white/10 text-9xl absolute -right-6 -bottom-8 pointer-events-none"></i>
+                <i class="fa-solid fa-store text-white/10 text-9xl absolute -right-6 -bottom-8 pointer-events-none"></i>
             </div>
 
             <section class="bg-white rounded-2xl p-5 sm:p-6 border border-slate-200 shadow-sm space-y-4">
@@ -4385,7 +4395,8 @@ window.VGSubs = (function () {
                 </div>
                 <div class="flex flex-wrap gap-2">
                     <button type="button" onclick="fdcCopyLink()" class="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold"><i class="fa-regular fa-copy mr-1"></i>Copiar enlace</button>
-                    <a href="https://api.whatsapp.com/send?text=${encodeURIComponent('Hacé tu pedido en ' + (s.nombre || '') + ': ' + link)}" target="_blank" rel="noopener" class="px-4 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-xs font-bold"><i class="fa-brands fa-whatsapp mr-1"></i>Compartir</a>
+                    <button type="button" onclick="fdcShareApp()" class="px-4 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-xs font-bold"><i class="fa-solid fa-share-nodes mr-1"></i>Compartir la app</button>
+                    <button type="button" onclick="fdcQR()" class="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-bold"><i class="fa-solid fa-qrcode mr-1"></i>Código QR</button>
                     <button type="button" onclick="fdcEditStore()" class="px-4 py-2.5 bg-ice-600 hover:bg-ice-700 text-white rounded-xl text-xs font-bold"><i class="fa-solid fa-pen mr-1"></i>Datos de la tienda</button>
                 </div>
             </div>`;
@@ -4411,6 +4422,73 @@ window.VGSubs = (function () {
                 <p id="fdc-mp-msg" class="text-[11px] font-semibold text-emerald-700 min-h-[1em]"></p>`;
         }
         function fdcMpOpened() { const m = document.getElementById('fdc-mp-msg'); if (m) m.textContent = 'Cuando termines de pagar, tocá "Ya pagué" para enviar el pedido por WhatsApp.'; }
+
+        // App propia de cada tienda: al instalarla desde la tienda, se instala con su nombre y abre esa tienda
+        function fdcAppManifest() {
+            if (!FDC_SLUG) return;
+            try {
+                const base = location.origin + location.pathname.replace(/[^/]*$/, '');
+                const s = FDC_STORE, fdc = FDC_TIENDA === 'flor-del-ceibo', nombre = s.nombre || 'Tienda';
+                const ic = fdc ? ['icon-192.png', 'icon-512.png', 'icon-maskable-512.png'] : ['tienda-192.png', 'tienda-512.png', 'tienda-maskable-512.png'];
+                const m = {
+                    name: nombre, short_name: nombre.length > 14 ? nombre.slice(0, 14).trim() : nombre,
+                    description: 'Hacé tu pedido en ' + nombre + (s.zona ? ' · ' + s.zona : ''),
+                    id: base + '?t=' + FDC_TIENDA, start_url: base + '?t=' + FDC_TIENDA + '&app=1', scope: base,
+                    display: 'standalone', orientation: 'portrait', lang: 'es-AR', background_color: '#480812', theme_color: '#480812',
+                    icons: [
+                        { src: base + ic[0], sizes: '192x192', type: 'image/png', purpose: 'any' },
+                        { src: base + ic[1], sizes: '512x512', type: 'image/png', purpose: 'any' },
+                        { src: base + ic[2], sizes: '512x512', type: 'image/png', purpose: 'maskable' }
+                    ]
+                };
+                const link = document.querySelector('link[rel="manifest"]');
+                if (link) link.href = 'data:application/manifest+json;charset=utf-8,' + encodeURIComponent(JSON.stringify(m));
+                const t = document.querySelector('meta[name="apple-mobile-web-app-title"]'); if (t) t.content = m.short_name;
+                if (!s.logo) { const ai = document.getElementById('apple-icon'); if (ai) ai.href = fdc ? 'icon-180.png' : 'tienda-180.png'; }
+            } catch (e) {}
+        }
+        function fdcShareText() {
+            const n = FDC_STORE.nombre || 'nuestra tienda', link = fdcStoreLink();
+            return `📲 ¡Ya podés pedir en ${n} desde tu celular!\n\n1️⃣ Abrí este enlace: ${link}\n2️⃣ Tocá «Instalar» para tener la app de ${n} en tu pantalla de inicio.\n3️⃣ Creá tu cuenta y hacé tu pedido.`;
+        }
+        async function fdcShareApp() {
+            const text = fdcShareText();
+            if (navigator.share) { try { await navigator.share({ title: FDC_STORE.nombre || 'Tienda', text }); return; } catch (e) { if (e && e.name === 'AbortError') return; } }
+            window.open('https://api.whatsapp.com/send?text=' + encodeURIComponent(text), '_blank');
+        }
+        function fdcLoadQRLib() {
+            if (window.QRCode) return Promise.resolve();
+            return new Promise((res, rej) => { const sc = document.createElement('script'); sc.src = 'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js'; sc.onload = () => window.QRCode ? res() : rej(new Error('qr')); sc.onerror = rej; document.head.appendChild(sc); });
+        }
+        async function fdcQR() {
+            const link = fdcStoreLink(), nombre = FDC_STORE.nombre || 'Tienda';
+            const m = document.createElement('div');
+            m.className = 'fixed inset-0 z-[9999] bg-black/60 flex items-center justify-center p-4';
+            m.innerHTML = `<div class="bg-white text-slate-800 rounded-2xl w-full max-w-sm p-5 shadow-2xl text-center space-y-3">
+                <h3 class="text-lg font-extrabold">Código QR de tu tienda</h3>
+                <p class="text-xs text-slate-500">Imprimilo o mostralo en el local: tus clientes lo escanean con la cámara y entran a <b>${fdcEsc(nombre)}</b> para instalar la app y pedir.</p>
+                <div id="fdc-qr" class="flex justify-center p-3 bg-white"><p class="text-sm text-slate-400">Generando…</p></div>
+                <p class="text-[11px] text-slate-400 break-all">${fdcEsc(link)}</p>
+                <div class="flex flex-col sm:flex-row gap-2"><button type="button" data-dl class="flex-1 py-2.5 bg-ice-600 hover:bg-ice-700 text-white rounded-lg font-bold text-sm"><i class="fa-solid fa-download mr-1"></i>Descargar imagen</button><button type="button" data-x class="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 rounded-lg font-bold text-sm text-slate-600">Cerrar</button></div>
+            </div>`;
+            document.body.appendChild(m);
+            m.addEventListener('click', e => { if (e.target === m || e.target.closest('[data-x]')) m.remove(); });
+            try { await fdcLoadQRLib(); } catch (e) { m.querySelector('#fdc-qr').innerHTML = '<p class="text-sm text-red-600">No se pudo generar el QR. Revisá la conexión.</p>'; return; }
+            const box = m.querySelector('#fdc-qr'); box.innerHTML = '';
+            new QRCode(box, { text: link, width: 220, height: 220, colorDark: '#111827', colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.M });
+            m.querySelector('[data-dl]').addEventListener('click', () => {
+                const qc = box.querySelector('canvas'); if (!qc) return;
+                const cv = document.createElement('canvas'); cv.width = 600; cv.height = 760; const cx = cv.getContext('2d');
+                cx.fillStyle = '#fff'; cx.fillRect(0, 0, 600, 760);
+                cx.fillStyle = '#b8172f'; cx.fillRect(0, 0, 600, 120);
+                cx.fillStyle = '#fff'; cx.textAlign = 'center'; cx.font = 'bold 40px sans-serif'; cx.fillText(nombre.slice(0, 26), 300, 76);
+                cx.imageSmoothingEnabled = false; cx.drawImage(qc, 100, 150, 400, 400);
+                cx.fillStyle = '#111827'; cx.font = 'bold 30px sans-serif'; cx.fillText('Escaneá y hacé tu pedido', 300, 620);
+                cx.fillStyle = '#64748b'; cx.font = '22px sans-serif'; cx.fillText('Instalá la app en tu celular', 300, 662);
+                cx.font = '18px sans-serif'; cx.fillText('VentiunGo Tienda', 300, 730);
+                const a = document.createElement('a'); a.href = cv.toDataURL('image/png'); a.download = 'QR-' + FDC_TIENDA + '.png'; document.body.appendChild(a); a.click(); a.remove();
+            });
+        }
 
         function fdcCopyLink() {
             const link = fdcStoreLink();
