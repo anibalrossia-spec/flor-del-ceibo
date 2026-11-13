@@ -281,7 +281,7 @@
             </div>
 
             <!-- Doble ingreso de la tienda: cliente y comercio -->
-            <div id="fdc-ingresos" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div id="fdc-ingresos" class="fdc-hide grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <button type="button" onclick="openClientModal()" class="bg-white rounded-2xl border-2 border-ice-200 hover:border-ice-500 shadow-sm p-5 flex items-center gap-4 text-left transition">
                     <span class="w-12 h-12 rounded-xl bg-ice-600 text-white flex items-center justify-center flex-shrink-0"><i class="fa-solid fa-cart-shopping text-xl"></i></span>
                     <span><span class="block font-extrabold text-slate-900 text-lg">Soy cliente</span><span class="block text-xs text-slate-500">Ingresá o creá tu cuenta para hacer tu pedido</span></span>
@@ -4018,7 +4018,7 @@ window.VGSubs = (function () {
             const comercio = !!(FAUTH && FAUTH.currentUser && !FAUTH.currentUser.isAnonymous && fdcAdminTienda());
             const logged = FDC_SLUG ? !!currentUser : comercio;
             const bl = document.getElementById('btn-logout'); if (bl) bl.classList.toggle('fdc-hide', !logged);
-            const ing = document.getElementById('fdc-ingresos'); if (ing) ing.classList.toggle('fdc-hide', !!(FDC_SLUG && currentUser));
+            const ing = document.getElementById('fdc-ingresos'); if (ing) ing.classList.toggle('fdc-hide', !!(FDC_SLUG && currentUser) || FDC_TIENDA === 'flor-del-ceibo');
             const mt = document.getElementById('btn-mitienda'); if (mt) mt.classList.toggle('fdc-hide', !!FDC_SLUG || !comercio);
             const bc = document.getElementById('btn-comercio'); if (bc) bc.classList.toggle('fdc-hide', !!FDC_SLUG || comercio);
         }
