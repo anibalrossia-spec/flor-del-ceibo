@@ -478,6 +478,9 @@
                         <i class="fa-solid fa-rotate-left"></i>
                         <span>Restablecer Ejemplo</span>
                     </button>
+                    <button onclick="fdcDescontarPedido()" class="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-100 rounded-xl text-xs font-bold transition flex items-center gap-2" title="Pegá el mensaje de un pedido de WhatsApp y se descuenta del stock">
+                        <i class="fa-solid fa-boxes-stacked"></i><span>Descontar pedido</span>
+                    </button>
                     <button onclick="fdcPromoTodas()" class="px-5 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-xl text-xs font-bold shadow-lg shadow-green-600/30 transition flex items-center space-x-2" title="Una imagen por cada producto publicado, lista para mandar por WhatsApp">
                         <i class="fa-brands fa-whatsapp text-sm"></i>
                         <span>Imágenes para WhatsApp</span>
@@ -835,6 +838,13 @@
                     <label class="block text-xs font-bold uppercase text-slate-600 mb-1">Descripción Breve</label>
                     <textarea id="prod-desc" rows="2" placeholder="Detalles de preparación, ingredientes o conservación..." 
                         class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-ice-500 focus:outline-none"></textarea>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold uppercase text-slate-600 mb-1">Stock (unidades)</label>
+                    <input type="number" id="prod-stock" min="0" step="1" inputmode="numeric" placeholder="Sin control de stock"
+                        class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm font-bold focus:ring-2 focus:ring-ice-500 focus:outline-none">
+                    <p class="text-[11px] text-slate-400 mt-1">Cuántas tenés. Al llegar a 0 aparece "Sin stock". Dejalo vacío si no querés controlar el stock.</p>
                 </div>
 
                 <div class="flex items-center space-x-2 pt-1">
@@ -2200,7 +2210,7 @@
             let addedCount = 0;
             ord.items.forEach(item => {
                 const p = products.find(prod => prod.id === item.productId || prod.name === item.name);
-                if (p && p.available && !p.oculto) {
+                if (p && fdcDisp(p) && !p.oculto) {
                     const existing = cart.find(c => c.productId === p.id);
                     if (existing) {
                         existing.qty += item.qty;
@@ -2594,7 +2604,13 @@
                                     </span>
                                 ` : ''}
 
-                                ${!p.available ? `
+                                ${fdcDisp(p) && fdcStock(p) !== null && fdcStock(p) <= FDC_STOCK_BAJO ? `
+                                    <span class="absolute top-3 right-3 bg-amber-500 text-white text-[11px] font-black px-2.5 py-1 rounded-full shadow-md">
+                                        ¡Quedan ${fdcStock(p)}!
+                                    </span>
+                                ` : ''}
+
+                                ${!fdcDisp(p) ? `
                                     <div class="absolute inset-0 bg-slate-900/70 backdrop-blur-[2px] flex items-center justify-center">
                                         <span class="bg-amber-500 text-white text-xs font-extrabold px-3 py-1.5 rounded-lg uppercase tracking-wider">
                                             Sin Stock
@@ -2625,7 +2641,7 @@
                                 <span class="text-[10px] text-slate-400 font-medium">por unidad</span>
                             </div>
 
-                            ${p.available ? `
+                            ${fdcDisp(p) ? `
                                 ${qtyInCart === 0 ? `
                                     <button onclick="addToCart('${p.id}')" 
                                         class="w-full py-2.5 bg-ice-600 hover:bg-ice-700 text-white rounded-xl font-bold text-xs shadow-md transition flex items-center justify-center space-x-2">
@@ -2657,6 +2673,9 @@
 
         function addToCart(productId) {
             const existing = cart.find(item => item.productId === productId);
+            const sp = products.find(x => x.id === productId), lim = fdcStock(sp);
+            if (!fdcDisp(sp)) { showToast("Este producto no tiene stock.", "warning"); return; }
+            if (lim !== null && (existing ? existing.qty : 0) + 1 > lim) { showToast(`Solo quedan ${lim} unidades de este producto.`, "warning"); return; }
             if (existing) {
                 existing.qty += 1;
             } else {
@@ -2671,6 +2690,8 @@
         function updateCartQty(productId, delta) {
             const item = cart.find(i => i.productId === productId);
             if (!item) return;
+            const lim = fdcStock(products.find(x => x.id === productId));
+            if (delta > 0 && lim !== null && item.qty + delta > lim) { showToast(`Solo quedan ${lim} unidades de este producto.`, "warning"); return; }
 
             item.qty += delta;
             if (item.qty <= 0) {
@@ -2785,6 +2806,15 @@
             if (!currentUser || !currentUser.name || !currentUser.address || !currentUser.phone) {
                 showToast("Debes iniciar sesión o registrarte con tus datos de envío.", "warning");
                 openClientModal();
+                return;
+            }
+
+            // Revisar que haya stock de todo lo que está en el carrito
+            const faltan = cart.map(ci => ({ ci, p: products.find(x => x.id === ci.productId) })).filter(o => o.p && (!fdcDisp(o.p) || (fdcStock(o.p) !== null && o.ci.qty > fdcStock(o.p))));
+            if (faltan.length) {
+                faltan.forEach(o => { const s = fdcDisp(o.p) ? fdcStock(o.p) : 0; if (s > 0) o.ci.qty = s; else cart = cart.filter(c => c !== o.ci); });
+                saveCartToStorage(); updateCartUI(); renderStoreProducts();
+                showToast('Ajustamos tu carrito: ' + faltan.map(o => o.p.name).join(', ') + ' no tiene stock suficiente. Revisalo y volvé a enviar.', 'warning');
                 return;
             }
 
@@ -2920,7 +2950,7 @@
 
             document.getElementById('stat-total').textContent = products.length;
             document.getElementById('stat-offers').textContent = products.filter(p => p.discount > 0).length;
-            document.getElementById('stat-out').textContent = products.filter(p => !p.available).length;
+            document.getElementById('stat-out').textContent = products.filter(p => !fdcDisp(p)).length;
             
             const totalDiscounts = products.reduce((acc, p) => acc + (p.discount || 0), 0);
             const avgDiscount = products.length ? Math.round(totalDiscounts / products.length) : 0;
@@ -2968,6 +2998,13 @@
                                 }">
                                 ${p.available ? '● Disponible' : '○ Pausado'}
                             </button>
+                            <div class="flex items-center justify-center gap-1 mt-2" title="Stock en unidades (vacío = sin control)">
+                                <button onclick="fdcStockSum('${p.id}', -1)" class="w-7 h-7 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-black" aria-label="Restar una unidad">−</button>
+                                <input type="number" min="0" step="1" inputmode="numeric" value="${fdcStock(p) === null ? '' : fdcStock(p)}" placeholder="—" onchange="fdcStockSet('${p.id}', this.value)" aria-label="Stock de ${p.name.replace(/"/g, '')}"
+                                    class="w-14 text-center px-1 py-1 border rounded-lg text-xs font-black ${fdcStock(p) === 0 ? 'border-red-300 text-red-600 bg-red-50' : fdcStock(p) !== null && fdcStock(p) <= FDC_STOCK_BAJO ? 'border-amber-300 text-amber-700 bg-amber-50' : 'border-slate-200 text-slate-700'}">
+                                <button onclick="fdcStockSum('${p.id}', 1)" class="w-7 h-7 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-black" aria-label="Sumar una unidad">+</button>
+                            </div>
+                            ${fdcStock(p) === 0 ? '<p class="text-[10px] font-black text-red-600 mt-1">Sin stock</p>' : fdcStock(p) !== null && fdcStock(p) <= FDC_STOCK_BAJO ? '<p class="text-[10px] font-black text-amber-600 mt-1">Stock bajo</p>' : ''}
                         </td>
                         <td class="p-4 text-right space-x-1 whitespace-nowrap">
                             <button onclick="fdcPromoOpen('${p.id}')" class="p-2 rounded-lg transition text-green-600 hover:bg-green-50" title="Imagen para WhatsApp" aria-label="Imagen para WhatsApp">
@@ -3010,6 +3047,7 @@
                     document.getElementById('prod-desc').value = p.description || '';
                     document.getElementById('prod-available').checked = p.available;
                     document.getElementById('prod-publicado').checked = !p.oculto;
+                    document.getElementById('prod-stock').value = fdcStock(p) === null ? '' : fdcStock(p);
 
                     if (p.image) {
                         setProductImagePreview(p.image);
@@ -3022,6 +3060,7 @@
                 document.getElementById('prod-discount').value = 0;
                 document.getElementById('prod-available').checked = true;
                 document.getElementById('prod-publicado').checked = true;
+                document.getElementById('prod-stock').value = '';
             }
 
             handleCategorySelectChange();
@@ -3174,16 +3213,18 @@
             const description = document.getElementById('prod-desc').value.trim();
             const available = document.getElementById('prod-available').checked;
             const oculto = !document.getElementById('prod-publicado').checked;
+            const stockTxt = document.getElementById('prod-stock').value.trim();
+            const stock = stockTxt === '' ? null : Math.max(0, Math.floor(Number(stockTxt) || 0));
 
             if (id) {
                 const idx = products.findIndex(p => p.id === id);
                 if (idx !== -1) {
-                    products[idx] = { id, name, category, subcategory, weight, price, discount, image, description, available, oculto };
+                    products[idx] = { id, name, category, subcategory, weight, price, discount, image, description, available, oculto, stock };
                 }
                 showToast("Producto actualizado correctamente", "success");
             } else {
                 const newId = 'p_' + Date.now();
-                products.push({ id: newId, name, category, subcategory, weight, price, discount, image, description, available, oculto });
+                products.push({ id: newId, name, category, subcategory, weight, price, discount, image, description, available, oculto, stock });
                 showToast("Nuevo producto añadido al catálogo", "success");
             }
 
@@ -3193,6 +3234,64 @@
             renderHomeCategories();
             renderAdminTable();
             renderStoreProducts();
+        }
+
+
+        /* ===== Stock por cantidad (opcional): vacío = sin control ===== */
+        const FDC_STOCK_BAJO = 5;
+        function fdcStock(p) { const s = p ? p.stock : null; return (s === null || s === undefined || s === '' || isNaN(Number(s))) ? null : Math.max(0, Math.floor(Number(s))); }
+        function fdcDisp(p) { const s = fdcStock(p); return !!(p && p.available && (s === null || s > 0)); }
+        function fdcStockSet(productId, val) {
+            const p = products.find(i => i.id === productId); if (!p) return;
+            const v = String(val).trim();
+            p.stock = v === '' ? null : Math.max(0, Math.floor(Number(v) || 0));
+            saveProductsToStorage(); renderAdminTable(); renderStoreProducts();
+        }
+        function fdcStockSum(productId, d) {
+            const p = products.find(i => i.id === productId); if (!p) return;
+            const s = fdcStock(p); fdcStockSet(productId, Math.max(0, (s === null ? 0 : s) + d));
+        }
+        // Lee el mensaje de WhatsApp de un pedido y descuenta lo vendido
+        function fdcLeerPedido(txt) {
+            const out = [], re = /^\s*\d+\.\s*\*([^*\n]+)\*\s*\n\s*Qty:\s*(\d+)/gm; let m;
+            const norm = s => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ').trim();
+            while ((m = re.exec(String(txt || '').replace(/\r/g, '')))) {
+                const name = m[1].trim(), qty = Number(m[2]) || 0, p = products.find(x => norm(x.name) === norm(name));
+                out.push({ name, qty, p });
+            }
+            return out;
+        }
+        function fdcDescontarPedido() {
+            const old = document.getElementById('fdc-desc'); if (old) old.remove();
+            const ov = document.createElement('div'); ov.id = 'fdc-desc';
+            ov.className = 'fixed inset-0 z-[90] bg-black/70 flex items-center justify-center p-4';
+            ov.innerHTML = '<div class="bg-white rounded-3xl shadow-2xl w-full max-w-md p-5 space-y-3 max-h-[90vh] overflow-y-auto"><div class="flex items-center justify-between"><h3 class="font-black text-slate-800">Descontar un pedido del stock</h3><button type="button" data-x="cerrar" class="w-9 h-9 rounded-full hover:bg-slate-100 text-slate-500" aria-label="Cerrar">✕</button></div><p class="text-xs text-slate-500">Copiá el mensaje del pedido que te llegó por WhatsApp y pegalo acá.</p><textarea id="fdc-desc-txt" rows="6" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-ice-500 focus:outline-none" placeholder="*❄️ NUEVO PEDIDO ...*"></textarea><div id="fdc-desc-prev" class="text-xs"></div><div class="grid grid-cols-2 gap-2"><button type="button" data-x="cerrar" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl py-3 text-sm">Cancelar</button><button type="button" data-x="ok" id="fdc-desc-ok" disabled class="bg-ice-600 hover:bg-ice-700 disabled:opacity-40 text-white font-bold rounded-xl py-3 text-sm">Descontar</button></div></div>';
+            document.body.appendChild(ov);
+            const ta = document.getElementById('fdc-desc-txt'), prev = document.getElementById('fdc-desc-prev'), ok = document.getElementById('fdc-desc-ok');
+            let items = [];
+            const pintar = () => {
+                items = fdcLeerPedido(ta.value);
+                if (!ta.value.trim()) { prev.innerHTML = ''; ok.disabled = true; return; }
+                if (!items.length) { prev.innerHTML = '<p class="text-amber-700 bg-amber-50 rounded-lg p-2">No encontré productos en el mensaje. Pegá el pedido completo, tal como llegó.</p>'; ok.disabled = true; return; }
+                prev.innerHTML = '<ul class="divide-y divide-slate-100 border border-slate-200 rounded-xl">' + items.map(it => {
+                    const s = it.p ? fdcStock(it.p) : null;
+                    const det = !it.p ? '<span class="text-red-600">no está en la tienda</span>' : s === null ? '<span class="text-slate-400">sin control de stock</span>' : '<b>' + s + '</b> → <b class="' + (s - it.qty < 0 ? 'text-red-600' : 'text-emerald-700') + '">' + Math.max(0, s - it.qty) + '</b>';
+                    return '<li class="flex items-center justify-between gap-2 p-2"><span class="font-semibold text-slate-700">' + it.qty + ' × ' + it.name.replace(/</g, '&lt;') + '</span><span class="whitespace-nowrap">' + det + '</span></li>';
+                }).join('') + '</ul>';
+                ok.disabled = !items.some(it => it.p && fdcStock(it.p) !== null);
+            };
+            ta.addEventListener('input', pintar);
+            ov.addEventListener('click', e => {
+                if (e.target === ov) return ov.remove();
+                const b = e.target.closest('[data-x]'); if (!b) return;
+                if (b.getAttribute('data-x') === 'cerrar') return ov.remove();
+                if (b.disabled) return;
+                let n = 0;
+                items.forEach(it => { if (it.p && fdcStock(it.p) !== null) { it.p.stock = Math.max(0, fdcStock(it.p) - it.qty); n++; } });
+                saveProductsToStorage(); renderAdminTable(); renderStoreProducts(); ov.remove();
+                showToast('Stock descontado en ' + n + (n === 1 ? ' producto.' : ' productos.'), 'success');
+            });
+            setTimeout(() => ta.focus(), 50);
         }
 
         /* ===== Imágenes para WhatsApp: una placa por producto, armada en el celular ===== */
@@ -3302,7 +3401,7 @@
             });
         }
         async function fdcPromoTodas() {
-            const lista = products.filter(p => !p.oculto && p.available !== false);
+            const lista = products.filter(p => !p.oculto && fdcDisp(p));
             if (!lista.length) return showToast('No hay productos publicados.', 'info');
             showToast('Armando ' + lista.length + ' imágenes…', 'info');
             const files = [];
