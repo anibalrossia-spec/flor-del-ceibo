@@ -3221,7 +3221,7 @@
             x.font = '600 26px ' + F; x.fillStyle = '#fecdd3';
             x.fillText(((FDC_STORE && FDC_STORE.zona) ? 'Envíos a ' + FDC_STORE.zona : 'Pedí online y te lo llevamos').slice(0, 60), 62, 134);
             // Foto
-            const fx = 50, fy = 210, fw = W - 100, fh = 620, img = await fdcPromoImg(p.image);
+            const fx = 50, fy = 200, fw = W - 100, fh = 450, img = await fdcPromoImg(p.image);
             x.save(); fdcPromoRound(x, fx, fy, fw, fh, 36); x.clip();
             if (img) { const s = Math.max(fw / img.width, fh / img.height), iw = img.width * s, ih = img.height * s; x.drawImage(img, fx + (fw - iw) / 2, fy + (fh - ih) / 2, iw, ih); }
             else { x.fillStyle = '#fde2e4'; x.fillRect(fx, fy, fw, fh); }
@@ -3250,6 +3250,13 @@
             x.fillStyle = '#1f2937'; x.font = '900 54px ' + F;
             const lines = fdcPromoWrap(x, p.name, W - 120, 2);
             lines.forEach(l => { x.fillText(l, 60, y); y += 64; });
+            // Descripción: qué tiene el producto
+            const desc = String(p.description || '').replace(/\s*\n+\s*/g, ' ').replace(/\s{2,}/g, ' ').trim();
+            if (desc) {
+                x.fillStyle = '#475569'; x.font = '500 31px ' + F;
+                const maxL = Math.max(1, Math.floor((1075 - y) / 42));
+                fdcPromoWrap(x, desc, W - 120, maxL).forEach(l => { x.fillText(l, 60, y + 4); y += 42; });
+            }
             // Precio
             const base = Number(p.price) || 0, fin = Math.round(base * (1 - disc / 100));
             const money = v => '$' + Number(v).toLocaleString('es-AR');
