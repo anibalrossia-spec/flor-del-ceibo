@@ -2871,6 +2871,8 @@
             document.getElementById('modal-whatsapp').classList.remove('hidden');
 
             fdcPayStep(pagaMP, totalFinal);
+            if (pagaMP) fdcMpPend({ wa: waUrl, msg: message, total: totalFinal, t: Date.now() }); else fdcMpPend(null);
+            const wl = document.getElementById('wa-open-link'); if (wl) wl.classList.remove('animate-pulse');
             showToast(pagaMP ? "¡Pedido guardado! Pagalo con Mercado Pago y después envialo por WhatsApp 💳" : "¡Pedido guardado en tu historial! Tocá el botón para enviarlo por WhatsApp 📲", "success");
         }
 
@@ -4445,7 +4447,25 @@ function vgOlvideDialog(o){
                 ${FDC_STORE.mpAlias ? `<p class="text-[11px] text-slate-500">También podés transferir al alias <b class="select-all text-slate-700">${fdcEsc(FDC_STORE.mpAlias)}</b>.</p>` : ''}
                 <p id="fdc-mp-msg" class="text-[11px] font-semibold text-emerald-700 min-h-[1em]"></p>`;
         }
-        function fdcMpOpened() { const m = document.getElementById('fdc-mp-msg'); if (m) m.textContent = 'Cuando termines de pagar, tocá "Ya pagué" para enviar el pedido por WhatsApp.'; }
+        function fdcMpOpened() { window.__fdcMpOut = Date.now(); const m = document.getElementById('fdc-mp-msg'); if (m) m.textContent = 'Cuando termines de pagar, volvé a esta página y enviá el pedido por WhatsApp.'; }
+        // Al volver de Mercado Pago, la tienda pasa sola al paso de enviar el pedido por WhatsApp
+        function fdcMpKey() { return 'fdc-mp-pend:' + (typeof FDC_TIENDA !== 'undefined' ? FDC_TIENDA : ''); }
+        function fdcMpPend(v) { try { if (v === undefined) { const x = JSON.parse(localStorage.getItem(fdcMpKey()) || 'null'); return x && Date.now() - x.t < 12 * 3600e3 ? x : null; } if (v) localStorage.setItem(fdcMpKey(), JSON.stringify(v)); else localStorage.removeItem(fdcMpKey()); } catch (e) { return null; } }
+        function fdcPayDone() {
+            const pend = fdcMpPend(); const modal = document.getElementById('modal-whatsapp'); if (!modal) return;
+            if (pend) { const a = document.getElementById('wa-open-link'), t = document.getElementById('wa-message-text'); if (a) a.href = pend.wa; if (t) t.value = pend.msg; }
+            modal.classList.remove('hidden');
+            const box = document.getElementById('fdc-mp-box'), step = document.getElementById('fdc-wa-step'), bt = document.getElementById('fdc-wa-btn-txt'), a = document.getElementById('wa-open-link');
+            if (box) box.classList.add('hidden');
+            if (bt) bt.textContent = 'Enviar pedido por WhatsApp';
+            if (a) a.classList.add('animate-pulse');
+            if (step) step.innerHTML = '<span class="block text-base font-extrabold text-emerald-700 mb-1">✅ ¡Volviste de Mercado Pago!</span>Último paso: tocá el botón verde para enviar tu pedido por WhatsApp y adjuntá el comprobante del pago.' + (pend ? ' <button type="button" onclick="fdcPayStep(true,' + (Number(pend.total) || 0) + ')" class="underline text-sky-700 font-semibold">Todavía no pagué</button>' : '');
+        }
+        function fdcMpBack() { if (document.hidden || !window.__fdcMpOut || Date.now() - window.__fdcMpOut < 3000) return; window.__fdcMpOut = 0; fdcPayDone(); }
+        document.addEventListener('visibilitychange', fdcMpBack); window.addEventListener('focus', fdcMpBack); window.addEventListener('pageshow', fdcMpBack);
+        document.addEventListener('click', function (e) { if (e.target.closest && e.target.closest('#wa-open-link')) { fdcMpPend(null); const a = document.getElementById('wa-open-link'); if (a) a.classList.remove('animate-pulse'); } }, true);
+        // Si la página se recargó o se cerró mientras pagaba, al volver a abrir la tienda aparece el pedido listo para enviar
+        window.addEventListener('load', function () { setTimeout(function () { if (fdcMpPend()) fdcPayDone(); }, 1500); });
 
         // App propia de cada tienda: al instalarla desde la tienda, se instala con su nombre y abre esa tienda
         function fdcAppManifest() {
