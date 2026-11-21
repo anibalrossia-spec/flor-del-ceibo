@@ -837,6 +837,10 @@
                     <input type="checkbox" id="prod-available" class="w-4 h-4 text-ice-600 rounded border-slate-300 focus:ring-ice-500">
                     <label for="prod-available" class="text-xs font-bold text-slate-700">Producto Disponible con Stock</label>
                 </div>
+                <div class="flex items-start space-x-2">
+                    <input type="checkbox" id="prod-publicado" checked class="mt-0.5 w-4 h-4 text-ice-600 rounded border-slate-300 focus:ring-ice-500">
+                    <label for="prod-publicado" class="text-xs font-bold text-slate-700">Publicado en la tienda<span class="block font-normal text-slate-400">Si lo destildás, la publicación queda suspendida: los clientes no lo ven, pero no se borra.</span></label>
+                </div>
 
                 </div>
                 <div class="flex-shrink-0 flex justify-end space-x-2 px-6 py-3 border-t border-slate-200 bg-slate-50">
@@ -1521,7 +1525,7 @@
             const cats = getCategoriesList().filter(c => c !== 'ALL');
             box.innerHTML = cats.map(c => {
                 const subs = getSubcategories(c);
-                const count = products.filter(p => p.category === c).length;
+                const count = products.filter(p => p.category === c && !p.oculto).length;
                 const countLabel = `${count} ${count === 1 ? 'producto' : 'productos'}`;
                 if (!subs.length) {
                     return `
@@ -2185,7 +2189,7 @@
             let addedCount = 0;
             ord.items.forEach(item => {
                 const p = products.find(prod => prod.id === item.productId || prod.name === item.name);
-                if (p && p.available) {
+                if (p && p.available && !p.oculto) {
                     const existing = cart.find(c => c.productId === p.id);
                     if (existing) {
                         existing.qty += item.qty;
@@ -2540,6 +2544,7 @@
             const searchTerm = document.getElementById('store-search').value.toLowerCase().trim();
 
             const filtered = products.filter(p => {
+                if (p.oculto) return false;
                 const matchesCategory = (activeCategory === 'ALL' || p.category === activeCategory) &&
                                         (activeCategory === 'ALL' || activeSubcategory === 'ALL' || p.subcategory === activeSubcategory);
                 const matchesSearch = p.name.toLowerCase().includes(searchTerm) || 
@@ -2924,12 +2929,13 @@
             tbody.innerHTML = filtered.map(p => {
                 const finalPrice = getFinalPrice(p.price, p.discount);
                 return `
-                    <tr class="hover:bg-slate-50/80 transition">
+                    <tr class="hover:bg-slate-50/80 transition${p.oculto ? ' bg-slate-50 opacity-60' : ''}">
                         <td class="p-4 font-semibold text-slate-800 flex items-center space-x-3">
                             <img src="${p.image || placeholderFor(p)}" data-pid="${p.id}" onerror="imgFallback(this)" class="w-10 h-10 object-cover rounded-lg border border-slate-200">
                             <div>
                                 <p class="line-clamp-1 font-bold text-slate-900">${p.name}</p>
                                 <p class="text-[11px] text-slate-400">${p.weight}</p>
+                                ${p.oculto ? '<span class="inline-block mt-0.5 bg-slate-200 text-slate-700 text-[10px] font-black px-2 py-0.5 rounded-full">Publicación suspendida</span>' : ''}
                             </div>
                         </td>
                         <td class="p-4 text-xs font-medium text-slate-600">${p.category}${p.subcategory ? `<p class="text-[11px] text-slate-400">${p.subcategory}</p>` : ''}</td>
@@ -2952,7 +2958,10 @@
                                 ${p.available ? '● Disponible' : '○ Pausado'}
                             </button>
                         </td>
-                        <td class="p-4 text-right space-x-1">
+                        <td class="p-4 text-right space-x-1 whitespace-nowrap">
+                            <button onclick="toggleProductPublish('${p.id}')" class="p-2 rounded-lg transition ${p.oculto ? 'text-emerald-600 hover:bg-emerald-50' : 'text-slate-500 hover:text-amber-600 hover:bg-amber-50'}" title="${p.oculto ? 'Volver a publicar' : 'Suspender publicación'}" aria-label="${p.oculto ? 'Volver a publicar' : 'Suspender publicación'}">
+                                <i class="fa-solid ${p.oculto ? 'fa-eye' : 'fa-eye-slash'}"></i>
+                            </button>
                             <button onclick="openProductModal('${p.id}')" class="p-2 text-slate-500 hover:text-ice-600 hover:bg-ice-50 rounded-lg transition" title="Editar">
                                 <i class="fa-solid fa-pen-to-square"></i>
                             </button>
@@ -2986,6 +2995,7 @@
                     document.getElementById('prod-image').value = p.image || '';
                     document.getElementById('prod-desc').value = p.description || '';
                     document.getElementById('prod-available').checked = p.available;
+                    document.getElementById('prod-publicado').checked = !p.oculto;
 
                     if (p.image) {
                         setProductImagePreview(p.image);
@@ -2997,6 +3007,7 @@
                 document.getElementById('prod-id').value = '';
                 document.getElementById('prod-discount').value = 0;
                 document.getElementById('prod-available').checked = true;
+                document.getElementById('prod-publicado').checked = true;
             }
 
             handleCategorySelectChange();
@@ -3147,16 +3158,17 @@
             let image = currentUploadedImageBase64 || document.getElementById('prod-image').value.trim();
             const description = document.getElementById('prod-desc').value.trim();
             const available = document.getElementById('prod-available').checked;
+            const oculto = !document.getElementById('prod-publicado').checked;
 
             if (id) {
                 const idx = products.findIndex(p => p.id === id);
                 if (idx !== -1) {
-                    products[idx] = { id, name, category, subcategory, weight, price, discount, image, description, available };
+                    products[idx] = { id, name, category, subcategory, weight, price, discount, image, description, available, oculto };
                 }
                 showToast("Producto actualizado correctamente", "success");
             } else {
                 const newId = 'p_' + Date.now();
-                products.push({ id: newId, name, category, subcategory, weight, price, discount, image, description, available });
+                products.push({ id: newId, name, category, subcategory, weight, price, discount, image, description, available, oculto });
                 showToast("Nuevo producto añadido al catálogo", "success");
             }
 
@@ -3166,6 +3178,17 @@
             renderHomeCategories();
             renderAdminTable();
             renderStoreProducts();
+        }
+
+        function toggleProductPublish(productId) {
+            const p = products.find(item => item.id === productId);
+            if (!p) return;
+            p.oculto = !p.oculto;
+            saveProductsToStorage();
+            renderAdminTable();
+            renderStoreProducts();
+            if (typeof renderHomeCategories === 'function') renderHomeCategories();
+            showToast(p.oculto ? `"${p.name}": publicación suspendida. Los clientes ya no lo ven.` : `"${p.name}" volvió a estar publicado.`, 'info');
         }
 
         function toggleProductAvailability(productId) {
