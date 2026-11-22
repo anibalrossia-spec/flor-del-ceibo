@@ -2625,12 +2625,12 @@
                                         <span>Agregar al Carrito</span>
                                     </button>
                                 ` : `
-                                    <div class="flex items-center justify-between bg-ice-50 border border-ice-200 rounded-xl p-1">
-                                        <button onclick="updateCartQty('${p.id}', -1)" class="w-8 h-8 bg-white text-ice-700 font-bold rounded-lg shadow-sm hover:bg-ice-100 flex items-center justify-center">
+                                    <div class="flex items-center justify-between bg-ice-600 rounded-xl p-1 shadow-md">
+                                        <button onclick="updateCartQty('${p.id}', -1)" class="w-9 h-9 bg-white text-ice-700 font-bold rounded-lg shadow-sm hover:bg-ice-50 flex items-center justify-center" aria-label="Quitar uno">
                                             <i class="fa-solid fa-minus text-xs"></i>
                                         </button>
-                                        <span class="font-extrabold text-ice-900 text-sm px-2">${qtyInCart} en carrito</span>
-                                        <button onclick="updateCartQty('${p.id}', 1)" class="w-8 h-8 bg-ice-600 text-white font-bold rounded-lg shadow-sm hover:bg-ice-700 flex items-center justify-center">
+                                        <span class="px-2 text-center leading-tight" style="color:#fff"><b class="text-xl font-black">${qtyInCart}</b> <span class="text-xs font-bold" style="opacity:.9">en carrito</span></span>
+                                        <button onclick="updateCartQty('${p.id}', 1)" class="w-9 h-9 bg-white text-ice-700 font-bold rounded-lg shadow-sm hover:bg-ice-50 flex items-center justify-center" aria-label="Agregar uno">
                                             <i class="fa-solid fa-plus text-xs"></i>
                                         </button>
                                     </div>
