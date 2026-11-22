@@ -478,6 +478,9 @@
                         <i class="fa-solid fa-rotate-left"></i>
                         <span>Restablecer Ejemplo</span>
                     </button>
+                    <button onclick="fdcCargarVenta()" class="px-4 py-2.5 bg-ice-600 hover:bg-ice-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-2" title="Elegí los productos vendidos y se descuentan del stock">
+                        <i class="fa-solid fa-cash-register"></i><span>Cargar venta</span>
+                    </button>
                     <button onclick="fdcDescontarPedido()" class="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-100 rounded-xl text-xs font-bold transition flex items-center gap-2" title="Pegá el mensaje de un pedido de WhatsApp y se descuenta del stock">
                         <i class="fa-solid fa-boxes-stacked"></i><span>Descontar pedido</span>
                     </button>
@@ -3260,6 +3263,48 @@
                 out.push({ name, qty, p });
             }
             return out;
+        }
+        // Venta cargada a mano por el administrador: elige productos y cantidades, y se descuenta del stock
+        function fdcCargarVenta() {
+            const old = document.getElementById('fdc-venta'); if (old) old.remove();
+            const lista = products.filter(p => p.available).slice().sort((a, b) => a.name.localeCompare(b.name));
+            const qty = {};
+            const ov = document.createElement('div'); ov.id = 'fdc-venta';
+            ov.className = 'fixed inset-0 z-[90] bg-black/70 flex items-center justify-center p-4';
+            ov.innerHTML = '<div class="bg-white rounded-3xl shadow-2xl w-full max-w-md p-5 space-y-3 max-h-[92vh] flex flex-col"><div class="flex items-center justify-between"><h3 class="font-black text-slate-800">Cargar una venta</h3><button type="button" data-x="cerrar" class="w-9 h-9 rounded-full hover:bg-slate-100 text-slate-500" aria-label="Cerrar">✕</button></div><input id="fdc-venta-q" type="search" placeholder="Buscar producto..." class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-ice-500 focus:outline-none"><ul id="fdc-venta-l" class="divide-y divide-slate-100 border border-slate-200 rounded-xl overflow-y-auto flex-1 min-h-[160px]"></ul><div class="flex items-center justify-between text-sm"><span class="text-slate-500" id="fdc-venta-n">Ningún producto elegido</span><b id="fdc-venta-t" class="text-slate-900">$0</b></div><div class="grid grid-cols-2 gap-2"><button type="button" data-x="cerrar" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl py-3 text-sm">Cancelar</button><button type="button" data-x="ok" id="fdc-venta-ok" disabled class="bg-ice-600 hover:bg-ice-700 disabled:opacity-40 text-white font-bold rounded-xl py-3 text-sm">Cargar venta</button></div><button type="button" data-x="pegar" class="text-xs text-sky-700 underline">¿Te llegó por WhatsApp? Pegá el pedido</button></div>';
+            document.body.appendChild(ov);
+            const ul = document.getElementById('fdc-venta-l'), q = document.getElementById('fdc-venta-q');
+            const esc = s => String(s || '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+            const pintar = () => {
+                const f = q.value.trim().toLowerCase();
+                ul.innerHTML = lista.filter(p => !f || p.name.toLowerCase().includes(f)).map(p => {
+                    const s = fdcStock(p), n = qty[p.id] || 0;
+                    const st = s === null ? '<span class="text-slate-400">sin control</span>' : '<span class="' + (s === 0 ? 'text-red-600' : s <= FDC_STOCK_BAJO ? 'text-amber-600' : 'text-slate-500') + '">stock ' + s + (n ? ' → ' + Math.max(0, s - n) : '') + '</span>';
+                    return '<li class="flex items-center gap-2 p-2' + (n ? ' bg-ice-50' : '') + '"><div class="flex-1 min-w-0"><p class="text-sm font-semibold text-slate-800 truncate">' + esc(p.name) + '</p><p class="text-[11px]">' + st + ' · $' + getFinalPrice(p.price, p.discount).toLocaleString('es-AR') + '</p></div><button type="button" data-m="' + p.id + '" class="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 font-black text-slate-700" aria-label="Restar">−</button><span class="w-7 text-center font-black text-sm">' + n + '</span><button type="button" data-s="' + p.id + '" class="w-8 h-8 rounded-lg bg-ice-600 hover:bg-ice-700 font-black text-white" aria-label="Sumar">+</button></li>';
+                }).join('') || '<li class="p-4 text-center text-xs text-slate-400">No hay productos con ese nombre.</li>';
+                const el = Object.keys(qty).filter(k => qty[k] > 0), uds = el.reduce((a, k) => a + qty[k], 0);
+                const tot = el.reduce((a, k) => { const p = products.find(x => x.id === k); return a + (p ? getFinalPrice(p.price, p.discount) * qty[k] : 0); }, 0);
+                document.getElementById('fdc-venta-n').textContent = uds ? uds + (uds === 1 ? ' unidad' : ' unidades') + ' en ' + el.length + (el.length === 1 ? ' producto' : ' productos') : 'Ningún producto elegido';
+                document.getElementById('fdc-venta-t').textContent = '$' + tot.toLocaleString('es-AR');
+                document.getElementById('fdc-venta-ok').disabled = !uds;
+            };
+            q.addEventListener('input', pintar);
+            ov.addEventListener('click', e => {
+                if (e.target === ov) return ov.remove();
+                const s = e.target.closest('[data-s]'), m = e.target.closest('[data-m]');
+                if (s) { const id = s.getAttribute('data-s'), p = products.find(x => x.id === id), st = fdcStock(p); if (st !== null && (qty[id] || 0) >= st) { showToast('Solo quedan ' + st + ' unidades de ' + p.name + '.', 'warning'); return; } qty[id] = (qty[id] || 0) + 1; return pintar(); }
+                if (m) { const id = m.getAttribute('data-m'); qty[id] = Math.max(0, (qty[id] || 0) - 1); return pintar(); }
+                const b = e.target.closest('[data-x]'); if (!b) return; const a = b.getAttribute('data-x');
+                if (a === 'cerrar') return ov.remove();
+                if (a === 'pegar') { ov.remove(); return fdcDescontarPedido(); }
+                if (a === 'ok' && !b.disabled) {
+                    let n = 0;
+                    Object.keys(qty).forEach(k => { const p = products.find(x => x.id === k); if (p && qty[k] > 0 && fdcStock(p) !== null) { p.stock = Math.max(0, fdcStock(p) - qty[k]); n++; } });
+                    saveProductsToStorage(); renderAdminTable(); renderStoreProducts(); ov.remove();
+                    showToast(n ? 'Venta cargada. Se descontó el stock de ' + n + (n === 1 ? ' producto.' : ' productos.') : 'Venta cargada. Esos productos no tienen control de stock.', 'success');
+                }
+            });
+            pintar(); setTimeout(() => q.focus(), 50);
         }
         function fdcDescontarPedido() {
             const old = document.getElementById('fdc-desc'); if (old) old.remove();
