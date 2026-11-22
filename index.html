@@ -478,6 +478,9 @@
                         <i class="fa-solid fa-rotate-left"></i>
                         <span>Restablecer Ejemplo</span>
                     </button>
+                    <button onclick="fdcClientes()" class="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-100 rounded-xl text-xs font-bold transition flex items-center gap-2" title="Ver y modificar las cuentas de los clientes">
+                        <i class="fa-solid fa-users"></i><span>Clientes</span>
+                    </button>
                     <button onclick="fdcCargarVenta()" class="px-4 py-2.5 bg-ice-600 hover:bg-ice-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-2" title="Elegí los productos vendidos y se descuentan del stock">
                         <i class="fa-solid fa-cash-register"></i><span>Cargar venta</span>
                     </button>
@@ -2273,26 +2276,20 @@
             const neighborhood = document.getElementById('reg-neighborhood').value.trim();
             const phone = document.getElementById('reg-phone').value.trim();
 
-            if (clientAccounts.some(acc => acc.email === email)) {
-                showToast("Ya existe una cuenta con este email", "warning");
+            if (password.length < 6) {
+                showToast("La contraseña tiene que tener al menos 6 caracteres", "warning");
                 return;
             }
 
-            const newAcc = {
-                name, email, password, address, neighborhood, phone,
-                payment: 'Efectivo en Entrega',
-                role: 'client'
-            };
-
-            clientAccounts.push(newAcc);
-            saveAccountsToStorage();
-
-            currentUser = newAcc;
-            saveUserSession();
-
-            closeClientModal();
-            updateClientBanner();
-            showToast("¡Cuenta creada exitosamente! Bienvenido 🎉", "success");
+            showToast("Creando tu cuenta…", "info");
+            fdcCliCrear({ name, email, address, neighborhood, phone, payment: 'Efectivo en Entrega' }, password).then(u => {
+                currentUser = u;
+                saveUserSession();
+                document.getElementById('form-client-register').reset();
+                closeClientModal();
+                updateClientBanner();
+                showToast("¡Cuenta creada exitosamente! Bienvenido 🎉", "success");
+            }).catch(err => showToast(fdcCliErr(err), "warning"));
         }
 
         function handleClientLogin(e) {
@@ -2340,17 +2337,25 @@
                 return;
             }
 
-            const found = clientAccounts.find(acc => acc.email === email && acc.password === password);
-
-            if (found) {
-                currentUser = found;
+            showToast("Ingresando…", "info");
+            fdcCliLogin(email, password).then(async u => {
+                let corta = false;
+                if (!u) {
+                    // Cuenta vieja guardada solo en este celular: se pasa a la nube al entrar
+                    const found = clientAccounts.find(acc => acc.email === email && acc.password === password);
+                    if (!found) return showToast("Email o contraseña incorrectos", "warning");
+                    if (password.length >= 6) { try { u = await fdcCliCrear(found, password); found.migrado = true; saveAccountsToStorage(); } catch (e) { u = null; } }
+                    else corta = true;
+                    if (!u) u = found;
+                }
+                currentUser = u;
                 saveUserSession();
+                document.getElementById('form-client-login').reset();
                 closeClientModal();
                 updateClientBanner();
-                showToast(`¡Hola de nuevo, ${found.name}! 👋`, "success");
-            } else {
-                showToast("Email o contraseña incorrectos", "warning");
-            }
+                showToast(`¡Hola de nuevo, ${u.name}! 👋`, "success");
+                if (corta) setTimeout(() => showToast('Tu contraseña es muy corta para guardar tu cuenta en la nube. Pedile a la tienda una contraseña nueva de 6 o más caracteres.', 'info'), 2500);
+            }).catch(err => showToast(fdcCliErr(err), "warning"));
         }
 
         function openGmailLoginPrompt() {
@@ -2370,61 +2375,26 @@
                 showToast("Ingresa un correo de Gmail válido", "warning");
                 return;
             }
-
-            let account = clientAccounts.find(acc => acc.email === cleanEmail);
-
-            if (!account) {
-                // Auto create account with Gmail
-                const namePart = cleanEmail.split('@')[0].replace(/[._]/g, ' ');
-                const formattedName = namePart.charAt(0).toUpperCase() + namePart.slice(1);
-
-                account = {
-                    name: formattedName,
-                    email: cleanEmail,
-                    password: 'gmail_user_pass',
-                    address: '',
-                    neighborhood: FDC_STORE.ciudad || '',
-                    phone: '',
-                    payment: 'Efectivo en Entrega',
-                    role: 'client'
-                };
-
-                clientAccounts.push(account);
-                saveAccountsToStorage();
-                showToast(`¡Cuenta de Gmail vinculada con éxito! 🎉`, "success");
-            } else {
-                showToast(`¡Sesión iniciada con Gmail! 👋`, "success");
-            }
-
-            currentUser = account;
-            saveUserSession();
-            updateClientBanner();
-
-            // Check if address/phone missing, redirect to edit profile
-            if (!currentUser.address || !currentUser.phone) {
-                const loggedView = document.getElementById('client-logged-view');
-                const unloggedView = document.getElementById('client-unlogged-view');
-                loggedView.classList.remove('hidden');
-                unloggedView.classList.add('hidden');
-
-                document.getElementById('user-display-name').textContent = currentUser.name;
-                document.getElementById('user-display-email').textContent = currentUser.email;
-
-                document.getElementById('cli-name').value = currentUser.name || '';
-                document.getElementById('cli-address').value = currentUser.address || '';
-                document.getElementById('cli-neighborhood').value = currentUser.neighborhood || FDC_STORE.ciudad || '';
-                document.getElementById('cli-phone').value = currentUser.phone || '';
-                document.getElementById('cli-payment').value = currentUser.payment || 'Efectivo en Entrega';
-
-                setClientModalTab('profile');
-                showToast("Por favor completa tu dirección y teléfono para envíos", "info");
-            } else {
-                closeClientModal();
-            }
+            // Las cuentas están en la nube: se entra siempre con contraseña
+            document.getElementById('gmail-quick-box').classList.add('hidden');
+            fdcCliHash(cleanEmail).then(hh => { fdcCliApp(); return FCLIDB ? fdcCliRef().collection('clientes_login').doc(hh).get() : null; }).then(sn => {
+                if (sn && sn.exists) {
+                    setAuthTab('login');
+                    document.getElementById('login-email').value = cleanEmail;
+                    document.getElementById('login-password').focus();
+                    showToast('Escribí tu contraseña para entrar 🔑', 'info');
+                } else {
+                    setAuthTab('register');
+                    document.getElementById('reg-email').value = cleanEmail;
+                    document.getElementById('reg-name').focus();
+                    showToast('Completá tus datos para crear tu cuenta', 'info');
+                }
+            }).catch(() => { setAuthTab('login'); document.getElementById('login-email').value = cleanEmail; });
         }
 
         function logoutUser() {
             if (currentUser && currentUser.role === 'admin' && FAUTH) { try { FAUTH.signOut(); } catch (e) {} }
+            if (currentUser && currentUser.role === 'client' && FCLI) { try { FCLI.signOut(); } catch (e) {} }
             currentUser = null;
             saveUserSession();
             updateClientBanner();
@@ -2443,6 +2413,9 @@
             currentUser.phone = document.getElementById('cli-phone').value.trim();
             currentUser.payment = document.getElementById('cli-payment').value;
 
+            if (currentUser.role === 'client' && currentUser.uid && fdcCliApp() && FCLI.currentUser && FCLI.currentUser.uid === currentUser.uid) {
+                fdcCliRef().collection('clientes').doc(currentUser.uid).update(fdcCliDatos(currentUser)).catch(() => showToast('No se pudieron guardar tus datos en la nube. Probá de nuevo.', 'warning'));
+            }
             if (currentUser.role === 'client') {
                 const idx = clientAccounts.findIndex(acc => acc.email === currentUser.email);
                 if (idx !== -1) {
@@ -4065,7 +4038,7 @@ window.VGSubs = (function () {
                 m.innerHTML = `<div class="bg-white text-slate-800 rounded-2xl w-full max-w-sm p-5 shadow-2xl space-y-3" role="dialog" aria-modal="true">
                     <h3 class="text-lg font-extrabold">${fdcEsc(title)}</h3>
                     ${text ? `<p class="text-sm text-slate-500">${text}</p>` : ''}
-                    ${fields.map(f => `<input id="fm-${f.id}" type="${f.type || 'password'}" placeholder="${fdcEsc(f.label)}" autocomplete="${f.ac || 'off'}" class="w-full px-3 py-2.5 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-ice-500 focus:outline-none">`).join('')}
+                    ${fields.map(f => `<input id="fm-${f.id}" type="${f.type || 'password'}" placeholder="${fdcEsc(f.label)}" value="${fdcEsc(f.value || '')}" autocomplete="${f.ac || 'off'}" class="w-full px-3 py-2.5 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-ice-500 focus:outline-none">`).join('')}
                     <p id="fm-err" class="text-xs font-semibold text-red-600 min-h-[1em]"></p>
                     <div class="flex flex-col gap-2">
                         <button data-a="ok" class="w-full py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg font-bold text-sm">${fdcEsc(ok)}</button>
@@ -4114,6 +4087,159 @@ function vgOlvideDialog(o){
   });
   document.body.appendChild(ov);
 }
+        /* ===== Cuentas de clientes en la nube: el administrador de la tienda y soporte las ven y las pueden modificar ===== */
+        let FCLI = null, FCLIDB = null;
+        function fdcCliApp() {
+            if (FCLI) return FCLI;
+            if (!window.firebase || !window.VENTIUN_FIREBASE) return null;
+            try { const a = firebase.apps.find(x => x.name === 'fdccli') || firebase.initializeApp(window.VENTIUN_FIREBASE, 'fdccli'); FCLI = a.auth(); FCLIDB = a.firestore(); } catch (e) { return null; }
+            return FCLI;
+        }
+        async function fdcCliHash(email) {
+            const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(String(email || '').trim().toLowerCase()));
+            return [...new Uint8Array(b)].map(x => x.toString(16).padStart(2, '0')).join('').slice(0, 32);
+        }
+        function fdcCliAuthEmail(h, sufijo) { return 'c' + h.slice(0, 24) + (sufijo || '') + '@' + FDC_TIENDA + '.clientes.ventiungo.app'; }
+        function fdcCliRef(db) { return (db || FCLIDB).collection('tiendas').doc(FDC_TIENDA); }
+        const FDC_CLI_CAMPOS = ['name', 'email', 'address', 'neighborhood', 'phone', 'payment'];
+        function fdcCliDatos(o) { const d = {}; FDC_CLI_CAMPOS.forEach(k => { d[k] = String((o && o[k]) || '').trim(); }); d.email = d.email.toLowerCase(); return d; }
+        function fdcCliErr(e) {
+            const c = (e && (e.code || e.message)) || '';
+            if (c === 'existe' || /email-already/.test(c)) return 'Ya existe una cuenta con este email. Ingresá con tu contraseña.';
+            if (/wrong-password|invalid-credential|invalid-login|user-not-found/.test(c)) return 'Email o contraseña incorrectos';
+            if (/weak-password/.test(c)) return 'La contraseña tiene que tener al menos 6 caracteres';
+            if (/too-many/.test(c)) return 'Demasiados intentos. Esperá unos minutos y probá de nuevo.';
+            return 'No se pudo conectar. Revisá la conexión y probá de nuevo.';
+        }
+        // Crea la cuenta del cliente en la nube (registro nuevo, o una cuenta vieja guardada solo en el celular)
+        async function fdcCliCrear(datos, pass) {
+            const au = fdcCliApp(); if (!au) throw new Error('nube');
+            const d = fdcCliDatos(datos), h = await fdcCliHash(d.email);
+            const ix = await fdcCliRef().collection('clientes_login').doc(h).get();
+            if (ix.exists) throw new Error('existe');
+            const authEmail = fdcCliAuthEmail(h);
+            let cred;
+            try { cred = await au.createUserWithEmailAndPassword(authEmail, pass); }
+            catch (e) { if (/email-already/.test(e.code || '')) cred = await au.signInWithEmailAndPassword(authEmail, pass); else throw e; }
+            const uid = cred.user.uid;
+            await fdcCliRef().collection('clientes').doc(uid).set(Object.assign({}, d, { tienda: FDC_TIENDA, alta: firebase.firestore.FieldValue.serverTimestamp() }), { merge: true });
+            await fdcCliRef().collection('clientes_login').doc(h).set({ uid, authEmail });
+            return Object.assign(d, { uid, role: 'client' });
+        }
+        // Ingreso del cliente: null si su cuenta todavía no está en la nube
+        async function fdcCliLogin(email, pass) {
+            const au = fdcCliApp(); if (!au) throw new Error('nube');
+            const h = await fdcCliHash(email);
+            const ix = await fdcCliRef().collection('clientes_login').doc(h).get();
+            if (!ix.exists) return null;
+            const cred = await au.signInWithEmailAndPassword(ix.data().authEmail, pass);
+            const sn = await fdcCliRef().collection('clientes').doc(cred.user.uid).get();
+            const d = fdcCliDatos(sn.exists ? sn.data() : { email });
+            if (!d.email) d.email = String(email).trim().toLowerCase();
+            return Object.assign(d, { uid: cred.user.uid, role: 'client' });
+        }
+        // Al abrir la tienda: trae los datos del cliente desde la nube (por si el administrador los cambió)
+        function fdcCliRefrescar() {
+            if (!currentUser || currentUser.role !== 'client' || !currentUser.uid) return;
+            const au = fdcCliApp(); if (!au) return;
+            const off = au.onAuthStateChanged(async u => {
+                off();
+                if (!u || u.uid !== currentUser.uid) return;
+                try {
+                    const sn = await fdcCliRef().collection('clientes').doc(u.uid).get();
+                    if (!sn.exists) return;
+                    const d = sn.data();
+                    if (d.reemplazadoPor) {
+                        try { await au.signOut(); } catch (e) {}
+                        currentUser = null; saveUserSession(); updateClientBanner();
+                        return showToast('Tu contraseña cambió. Ingresá de nuevo con la contraseña nueva.', 'info');
+                    }
+                    currentUser = Object.assign(fdcCliDatos(d), { uid: u.uid, role: 'client' });
+                    saveUserSession(); updateClientBanner();
+                } catch (e) {}
+            });
+        }
+        window.addEventListener('load', () => setTimeout(fdcCliRefrescar, 800));
+
+        function fdcWaCel(tel) { let n = String(tel || '').replace(/\D/g, ''); if (!n) return ''; if (n.startsWith('0')) n = n.slice(1); if (!n.startsWith('54')) n = '549' + n; return n; }
+
+        // Panel: lista de clientes de la tienda, con editar datos y dar una contraseña nueva
+        async function fdcClientes() {
+            if (!FDB || !FAUTH || !FAUTH.currentUser || !currentUser || currentUser.role !== 'admin') return showToast('Volvé a ingresar como administrador para ver los clientes', 'warning');
+            const old = document.getElementById('fdc-clis'); if (old) old.remove();
+            const ov = document.createElement('div'); ov.id = 'fdc-clis';
+            ov.className = 'fixed inset-0 z-[90] bg-black/70 flex items-center justify-center p-4';
+            ov.innerHTML = '<div class="bg-white rounded-3xl shadow-2xl w-full max-w-lg p-5 space-y-3 max-h-[92vh] flex flex-col"><div class="flex items-center justify-between"><h3 class="font-black text-slate-800">Clientes de la tienda <span id="fdc-clis-n" class="text-slate-400 font-bold text-sm"></span></h3><button type="button" data-x="cerrar" class="w-9 h-9 rounded-full hover:bg-slate-100 text-slate-500" aria-label="Cerrar">✕</button></div><input id="fdc-clis-q" type="search" placeholder="Buscar por nombre, email o teléfono..." class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-ice-500 focus:outline-none"><ul id="fdc-clis-l" class="divide-y divide-slate-100 border border-slate-200 rounded-xl overflow-y-auto flex-1 min-h-[160px]"><li class="p-6 text-center text-xs text-slate-400">Cargando clientes…</li></ul><p class="text-[11px] text-slate-400">Los clientes que se registraron antes de este cambio aparecen la próxima vez que entren a la tienda.</p></div>';
+            document.body.appendChild(ov);
+            const ul = document.getElementById('fdc-clis-l'), q = document.getElementById('fdc-clis-q');
+            let lista = [];
+            const pintar = () => {
+                const f = q.value.trim().toLowerCase();
+                const ver = lista.filter(c => !f || [c.name, c.email, c.phone, c.address, c.neighborhood].join(' ').toLowerCase().includes(f));
+                document.getElementById('fdc-clis-n').textContent = '(' + lista.length + ')';
+                ul.innerHTML = ver.map(c => '<li class="p-3 space-y-1"><div class="flex items-start justify-between gap-2"><div class="min-w-0"><p class="font-bold text-slate-800 truncate">' + fdcEsc(c.name || 'Sin nombre') + '</p><p class="text-xs text-slate-500 truncate">' + fdcEsc(c.email) + '</p><p class="text-xs text-slate-500">' + fdcEsc([c.phone, [c.address, c.neighborhood].filter(Boolean).join(', ')].filter(Boolean).join(' · ')) + '</p></div><div class="flex gap-1 shrink-0">' +
+                    (c.phone ? '<a href="https://wa.me/' + fdcWaCel(c.phone) + '" target="_blank" rel="noopener" class="w-9 h-9 rounded-lg bg-green-50 text-green-700 hover:bg-green-100 flex items-center justify-center" title="Escribirle por WhatsApp" aria-label="Escribirle por WhatsApp"><i class="fa-brands fa-whatsapp"></i></a>' : '') +
+                    '<button type="button" data-ed="' + c.uid + '" class="w-9 h-9 rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200" title="Editar datos" aria-label="Editar datos"><i class="fa-solid fa-pen-to-square"></i></button>' +
+                    '<button type="button" data-pw="' + c.uid + '" class="w-9 h-9 rounded-lg bg-amber-50 text-amber-700 hover:bg-amber-100" title="Darle una contraseña nueva" aria-label="Darle una contraseña nueva"><i class="fa-solid fa-key"></i></button></div></div></li>').join('')
+                    || '<li class="p-6 text-center text-xs text-slate-400">' + (lista.length ? 'Ningún cliente coincide con la búsqueda.' : 'Todavía no hay clientes registrados en la nube.') + '</li>';
+            };
+            const cargar = async () => {
+                try {
+                    const sn = await FDB.collection('tiendas').doc(FDC_TIENDA).collection('clientes').get();
+                    lista = sn.docs.map(d => Object.assign({ uid: d.id }, d.data())).filter(c => !c.reemplazadoPor).sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
+                    pintar();
+                } catch (e) { ul.innerHTML = '<li class="p-6 text-center text-xs text-red-600">' + (/permission/.test((e && e.code) || '') ? 'Falta activar el permiso de clientes en la base de datos.' : 'No se pudieron cargar los clientes. Revisá la conexión.') + '</li>'; }
+            };
+            q.addEventListener('input', pintar);
+            ov.addEventListener('click', async e => {
+                if (e.target === ov) return ov.remove();
+                const x = e.target.closest('[data-x]'); if (x && x.getAttribute('data-x') === 'cerrar') return ov.remove();
+                const ed = e.target.closest('[data-ed]'), pw = e.target.closest('[data-pw]');
+                const c = (ed || pw) && lista.find(i => i.uid === (ed || pw).getAttribute(ed ? 'data-ed' : 'data-pw'));
+                if (!c) return;
+                if (ed) { if (await fdcClienteEditar(c)) await cargar(); return; }
+                if (pw) { if (await fdcClienteClave(c)) await cargar(); }
+            });
+            await cargar(); setTimeout(() => q.focus(), 50);
+        }
+        async function fdcClienteEditar(c) {
+            const r = await fdcModal({ title: 'Datos de ' + (c.name || 'cliente'), text: 'Email (con el que entra): <b>' + fdcEsc(c.email) + '</b>', ok: 'Guardar cambios', fields: [
+                { id: 'name', label: 'Nombre', type: 'text', value: c.name }, { id: 'phone', label: 'Teléfono', type: 'tel', value: c.phone },
+                { id: 'address', label: 'Dirección de entrega', type: 'text', value: c.address }, { id: 'neighborhood', label: 'Barrio', type: 'text', value: c.neighborhood }] });
+            if (!r) return false;
+            const v = r.values; if (!String(v.name || '').trim()) { showToast('Escribí el nombre del cliente', 'warning'); return false; }
+            try {
+                await FDB.collection('tiendas').doc(FDC_TIENDA).collection('clientes').doc(c.uid).update({ name: v.name.trim(), phone: v.phone.trim(), address: v.address.trim(), neighborhood: v.neighborhood.trim() });
+                showToast('Datos del cliente guardados ✅', 'success'); return true;
+            } catch (e) { showToast('No se pudo guardar. Probá de nuevo.', 'warning'); return false; }
+        }
+        // Contraseña nueva sin saber la anterior: se crea una cuenta interna nueva con los mismos datos
+        async function fdcClienteClave(c) {
+            const r = await fdcModal({ title: 'Contraseña nueva para ' + (c.name || 'el cliente'), text: 'No hace falta la anterior. Después podés mandársela por WhatsApp.', ok: 'Crear contraseña', fields: FDC_NEW_FIELDS });
+            if (!r) return false;
+            const bad = fdcCheckNew(r.values, false); if (bad) { showToast(bad, 'warning'); return false; }
+            try {
+                const sec = firebase.apps.find(a => a.name === 'fdcsec') || firebase.initializeApp(window.VENTIUN_FIREBASE, 'fdcsec');
+                const sa = sec.auth();
+                try { await sa.setPersistence(firebase.auth.Auth.Persistence.NONE); } catch (e) {}
+                const h = await fdcCliHash(c.email), authEmail = fdcCliAuthEmail(h, '.r' + Date.now().toString(36));
+                const cred = await sa.createUserWithEmailAndPassword(authEmail, r.values.p1);
+                const nuevo = cred.user.uid, ref = FDB.collection('tiendas').doc(FDC_TIENDA);
+                await ref.collection('clientes').doc(nuevo).set(Object.assign(fdcCliDatos(c), { tienda: FDC_TIENDA, alta: c.alta || firebase.firestore.FieldValue.serverTimestamp(), claveNueva: firebase.firestore.FieldValue.serverTimestamp() }));
+                await ref.collection('clientes_login').doc(h).set({ uid: nuevo, authEmail });
+                await ref.collection('clientes').doc(c.uid).update({ reemplazadoPor: nuevo });
+                try { await sa.signOut(); } catch (e) {}
+                const tienda = FDC_STORE.nombre || 'la tienda';
+                const msg = 'Hola ' + (c.name || '') + ', te dejamos tus datos para entrar a ' + tienda + ':\nEmail: ' + c.email + '\nContraseña: ' + r.values.p1 + '\nIngresá en ' + fdcStoreLink();
+                const w = await fdcModal({ title: 'Contraseña nueva lista ✅', text: (c.name || 'El cliente') + ' ya entra con su email <b>' + fdcEsc(c.email) + '</b> y la contraseña nueva.', ok: c.phone ? '💬 Mandársela por WhatsApp' : 'Listo', cancel: 'Cerrar' });
+                if (w && c.phone) window.open('https://wa.me/' + fdcWaCel(c.phone) + '?text=' + encodeURIComponent(msg), '_blank');
+                return true;
+            } catch (e) {
+                showToast(/permission/.test((e && e.code) || '') ? 'Falta activar el permiso de clientes en la base de datos' : 'No se pudo cambiar la contraseña. Probá de nuevo.', 'warning');
+                return false;
+            }
+        }
+
         async function fdcForgot() {
             const typed = (document.getElementById('login-email').value || '').trim().toLowerCase();
             if (typed === 'ventiungo') {
@@ -4128,16 +4254,11 @@ function vgOlvideDialog(o){
                 vgOlvideDialog({ wa: 'https://wa.me/' + FDC_WA_SUPPORT + '?text=' + encodeURIComponent('Hola VentiunGo, olvidé la contraseña de administrador de la tienda ' + (FDC_STORE.nombre || FDC_TIENDA) + '. ¿Me dan una nueva?') });
                 return;
             }
-            // Cliente: la cuenta está guardada en este celular
-            const c = await fdcModal({ title: 'Nueva contraseña de cliente', text: 'Tu cuenta de cliente está guardada en este celular. Escribí tu email y elegí una contraseña nueva.', fields: [{ id: 'em', label: 'Tu email', type: 'email', ac: 'email' }].concat(FDC_NEW_FIELDS) });
+            // Cliente: la tienda le da una contraseña nueva desde su panel
+            const tienda = FDC_STORE.nombre || 'la tienda';
+            const c = await fdcModal({ title: '¿Olvidaste tu contraseña?', text: 'Escribile a <b>' + fdcEsc(tienda) + '</b> por WhatsApp y te dan una <b>contraseña nueva</b>. Vas a poder entrar desde cualquier celular.', ok: '💬 Escribir por WhatsApp', cancel: 'Cerrar' });
             if (!c) return;
-            const em = (c.values.em || '').trim().toLowerCase(), bad = fdcCheckNew(c.values, false);
-            if (bad) return showToast(bad, 'warning');
-            const acc = clientAccounts.find(a => a.email === em);
-            if (!acc) return showToast('No hay una cuenta con ese email en este celular. Podés crear una nueva.', 'warning');
-            acc.password = c.values.p1; saveAccountsToStorage();
-            document.getElementById('login-email').value = em;
-            showToast('Listo, ya podés ingresar con tu contraseña nueva', 'success');
+            window.open('https://wa.me/' + WHATSAPP_PHONE + '?text=' + encodeURIComponent('Hola ' + tienda + ', olvidé mi contraseña de la tienda. Mi email es: ' + (typed && typed.includes('@') ? typed : '(no me acuerdo)') + '. ¿Me dan una nueva?'), '_blank');
         }
 
         async function fdcChangePass() {
