@@ -3765,7 +3765,7 @@ window.VGSubs = (function () {
     return (blocking ? '' : '<button class="vgs-x" data-vgs-close aria-label="Cerrar">×</button>') + aviso +
       '<div class="vgs-center"><span class="vgs-eyebrow">Planes y precios</span><h2>Elegí el plan para tu negocio</h2><p class="vgs-mut" style="font-size:16px">Pagá por mes, por trimestre o por año y ahorrá.</p></div>' +
       '<div class="vgs-billing" role="tablist">' + tabs + '</div><div class="vgs-plans">' + cards + '</div>' +
-      '<p class="vgs-mut vgs-center" style="margin-top:16px">Pagás con <b>Mercado Pago</b>: tarjeta de crédito, débito o dinero en cuenta.</p>' +
+      '<p class="vgs-mut vgs-center" style="margin-top:16px">Pagás con <b>Mercado Pago</b>.</p>' +
       '<hr class="vgs-sep"><div class="vgs-row" style="justify-content:center">' +
       (o.sid ? '<button class="vgs-btn light sm" data-vgs-paid>✅ Ya pagué: avisar por WhatsApp</button>' : '') +
       (blocking ? '<button class="vgs-btn light sm" data-vgs-recheck>↻ Ya me activaron</button><button class="vgs-btn light sm" data-vgs-logout>Cerrar sesión</button>' : '<button class="vgs-btn light sm" data-vgs-close>Cerrar</button>') +
@@ -4630,7 +4630,7 @@ function vgOlvideDialog(o){
                         <p class="text-xs font-bold uppercase tracking-wide text-amber-500">Después de la prueba</p>
                         <p class="mt-1 text-4xl font-extrabold text-slate-900">Esencial o Pro</p>
                         <p class="mt-1 text-sm text-slate-500">pago mensual, trimestral (−10%) o anual (−25%)</p>
-                        <ul class="mt-6 mb-8 space-y-3">${['Pagás con Mercado Pago', 'Tarjeta de crédito, débito o dinero en cuenta', 'Tus datos quedan guardados', 'Soporte especializado'].map(t => li(true, t)).join('')}</ul>
+                        <ul class="mt-6 mb-8 space-y-3">${['Pagás con Mercado Pago', 'Tus datos quedan guardados', 'Soporte especializado'].map(t => li(true, t)).join('')}</ul>
                         <button type="button" onclick="fdcVerPlanes()" class="mt-auto w-full py-3.5 rounded-2xl bg-amber-400 hover:bg-amber-300 text-slate-900 font-bold transition">Ver planes y precios</button>
                     </div>
                 </div>
