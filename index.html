@@ -676,6 +676,7 @@
                         </svg>
                         <span>Continuar con tu cuenta de Gmail</span>
                     </button>
+                    <p class="text-[10px] text-slate-400 text-center -mt-1">Al continuar aceptás los <a href="https://ventiungo.ar/terminos/" target="_blank" rel="noopener" class="underline font-semibold">Términos y Condiciones</a> y la <a href="https://ventiungo.ar/terminos/#privacidad" target="_blank" rel="noopener" class="underline font-semibold">Política de Privacidad</a>.</p>
 
                     <!-- Inline Gmail Input Box (Hidden by default) -->
                     <div id="gmail-quick-box" class="hidden bg-slate-50 border border-slate-200 p-3 rounded-xl space-y-2">
@@ -750,6 +751,7 @@
                                 <input type="tel" id="reg-phone" required placeholder="3416123456" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-ice-500 focus:outline-none">
                             </div>
                         </div>
+                        <label class="flex items-start gap-2 text-[11px] text-slate-600 cursor-pointer"><input type="checkbox" id="reg-terms" class="mt-0.5 w-4 h-4 shrink-0"><span>Acepto los <a href="https://ventiungo.ar/terminos/" target="_blank" rel="noopener" style="text-decoration:underline;font-weight:700;color:inherit">Términos y Condiciones</a> y la <a href="https://ventiungo.ar/terminos/#privacidad" target="_blank" rel="noopener" style="text-decoration:underline;font-weight:700;color:inherit">Política de Privacidad</a> de VentiunGo.</span></label>
                         <button type="submit" class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-bold text-xs shadow">
                             Crear Mi Cuenta y Continuar
                         </button>
@@ -2281,9 +2283,13 @@
                 showToast("La contraseña tiene que tener al menos 6 caracteres", "warning");
                 return;
             }
+            if (!document.getElementById('reg-terms').checked) {
+                showToast("Para crear la cuenta tenés que aceptar los Términos y Condiciones", "warning");
+                return;
+            }
 
             showToast("Creando tu cuenta…", "info");
-            fdcCliCrear({ name, email, address, neighborhood, phone, payment: 'Efectivo en Entrega' }, password).then(u => {
+            fdcCliCrear({ name, email, address, neighborhood, phone, payment: 'Efectivo en Entrega', terminos: new Date().toISOString() }, password).then(u => {
                 currentUser = u;
                 saveUserSession();
                 document.getElementById('form-client-register').reset();
@@ -4151,7 +4157,7 @@ function vgOlvideDialog(o){
             try { cred = await au.createUserWithEmailAndPassword(authEmail, pass); }
             catch (e) { if (/email-already/.test(e.code || '')) cred = await au.signInWithEmailAndPassword(authEmail, pass); else throw e; }
             const uid = cred.user.uid;
-            await fdcCliRef().collection('clientes').doc(uid).set(Object.assign({}, d, { tienda: FDC_TIENDA, alta: firebase.firestore.FieldValue.serverTimestamp() }), { merge: true });
+            await fdcCliRef().collection('clientes').doc(uid).set(Object.assign({}, d, { tienda: FDC_TIENDA, alta: firebase.firestore.FieldValue.serverTimestamp() }, datos && datos.terminos ? { terminos: datos.terminos } : {}), { merge: true });
             await fdcCliRef().collection('clientes_login').doc(h).set({ uid, authEmail });
             return Object.assign(d, { uid, role: 'client' });
         }
@@ -4674,6 +4680,7 @@ function vgOlvideDialog(o){
                         <div><label class="${lbl}" for="fdc-c-p2">REPETIR CONTRASEÑA</label><input id="fdc-c-p2" type="password" class="${inp}" autocomplete="new-password"></div>
                     </div>
                     <p class="text-[11px] text-slate-400">Para entrar a administrar tu tienda vas a usar el nombre de la tienda y esta contraseña.</p>
+                    <label class="flex items-start gap-2.5 text-xs text-slate-600 cursor-pointer"><input type="checkbox" id="fdc-c-t" class="mt-0.5 w-4 h-4 shrink-0"><span>Acepto los <a href="https://ventiungo.ar/terminos/" target="_blank" rel="noopener" style="text-decoration:underline;font-weight:700;color:inherit">Términos y Condiciones</a> y la <a href="https://ventiungo.ar/terminos/#privacidad" target="_blank" rel="noopener" style="text-decoration:underline;font-weight:700;color:inherit">Política de Privacidad</a> de VentiunGo.</span></label>
                     <p id="fdc-c-err" class="text-xs font-semibold text-red-600 min-h-[1em]"></p>
                     <button id="fdc-c-btn" type="submit" class="w-full py-3 bg-ice-600 hover:bg-ice-700 text-white rounded-xl font-bold text-sm">Crear mi tienda gratis</button>
                 </form>`}
@@ -4830,6 +4837,7 @@ function vgOlvideDialog(o){
             if (!zona && !ciudad) { err.textContent = 'Escribí la ciudad o la zona de reparto.'; return; }
             if (p1.length < 6) { err.textContent = 'La contraseña tiene que tener al menos 6 caracteres.'; return; }
             if (p1 !== p2) { err.textContent = 'Las contraseñas no coinciden.'; return; }
+            if (!document.getElementById('fdc-c-t').checked) { err.textContent = 'Para crear la tienda tenés que aceptar los Términos y Condiciones.'; return; }
             if (!FDB || !FAUTH) { err.textContent = 'No hay conexión con la base de datos. Probá de nuevo.'; return; }
             btn.disabled = true; btn.textContent = 'Creando tu tienda…';
             try {
@@ -4842,7 +4850,7 @@ function vgOlvideDialog(o){
                 await ref.set({
                     owner: cred.user.uid, adminEmail: email, nombre, whatsapp: wa, ciudad, zona: zona || ciudad, minimo,
                     pagos: 'Efectivo, transferencia o Mercado Pago', descripcion: '', publico: true,
-                    creada: firebase.firestore.FieldValue.serverTimestamp()
+                    creada: firebase.firestore.FieldValue.serverTimestamp(), terminos: new Date().toISOString()
                 });
                 fdcEnterAdmin(slug, nombre, email);
             } catch (x) {
